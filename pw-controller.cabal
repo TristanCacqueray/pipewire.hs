@@ -1,0 +1,59 @@
+cabal-version:   3.0
+name:            pw-controller
+version:         0.1
+synopsis:        Apply rules to your pipewire links.
+description:     The goal of pw-controller is to ensure custom links are defined.
+category:        System
+author:          Tristan de Cacqueray
+maintainer:      tristan.cacqueray@gmail.com
+
+license:         GPL-3.0-only
+license-file:    LICENSE
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+common executable
+  ghc-options: -threaded -rtsopts -with-rtsopts=-T
+
+common common
+  build-depends:      base <5
+  default-language:   GHC2021
+  ghc-options:
+    -Wall -fwarn-incomplete-uni-patterns -Wno-partial-type-signatures
+    -fwrite-ide-info -Wno-missing-methods
+
+  default-extensions:
+    BlockArguments
+    DerivingStrategies
+    DuplicateRecordFields
+    ImportQualifiedPost
+    LambdaCase
+    OverloadedRecordDot
+    OverloadedStrings
+    PartialTypeSignatures
+    QuasiQuotes
+    StrictData
+    ViewPatterns
+
+executable pw-controller
+  import:         common, executable
+  hs-source-dirs: .
+  main-is:        PwController.hs
+  other-modules:
+    PwConstraint
+    PwMonParser
+    PwState
+
+  build-depends:
+    , async
+    , attoparsec
+    , bytestring
+    , containers
+    , optparse-applicative
+    , pcre-light
+    , rio
+    , streaming
+    , streaming-attoparsec
+    , streaming-bytestring
+    , text
+    , typed-process
