@@ -1,6 +1,7 @@
 # pw-controller - apply rules to pipewire links
 
-The goal of pw-controller is to ensure custom links are defined.
+The goal of pw-controller is to ensure custom links are present.
+pw-controller is similar to [WirePlumber][wireplumber] but it uses a simpler configuration which features higher level rules.
 pw-controller monitors the pipewire state by running `pw-mon` and it issues `pw-link` commands based on such rules:
 
 ```
@@ -29,6 +30,8 @@ pw-controller reacts to changes in pipewire state to continuously produce such a
 
 ## Usage
 
+> Note: this requires the following change: [pipewire#1998](https://gitlab.freedesktop.org/pipewire/pipewire/-/merge_requests/1998)
+
 ```ShellSession
 $ pw-controller --help
 Usage: pw-controller [--debug] [--dry] [--status] [--config PATH]
@@ -45,20 +48,24 @@ Available options:
 
 The implementation works for the above config, adding new features is welcome, for example:
 
+- Implement proper binding (started in [pipewire](./pipewire))
 - Provide a GUI/web page to show the status
 - Add more conditions and actions
 
 The code is implemented as follow:
 
-- PwMonParser: parse pw-mon output to produce PwEvent.
-- PwState: based on PwEvent, construct a State reprensentation.
-- PwRule: handle the logic to apply the rules based config to the state and produce Action.
-- PwController: the main apps that runs pw-mon and apply Actions.
+- [PwMonParser](./PwMonParser.hs): parse pw-mon output to produce PwEvent.
+- [PwState](./PwState.hs): based on PwEvent, construct a State reprensentation.
+- [PwConstraint](./PwConstraint.hs): handle the logic to apply the rules based config to the State and produce Action.
+- [PwController](./PwController.hs): the main apps that runs pw-mon and performs Actions.
 
 Run the tests with:
 
 ```
-cabal repl --with-ghc=doctest --ghc-options=-Wno-unused-packages
-fourmolu -i *.hs
-cabal-fmt -i ./pw-controller.cabal
+cabal build --flags=example -O0 all
+cabal repl --with-ghc=doctest exe:pw-controller
+fourmolu -i *.hs ./pipewire
+cabal-fmt -i ./pw-controller.cabal ./pipewire/pipewire.cabal
 ```
+
+[wireplumber]: https://docs.pipewire.org/group__api__pw__core.html

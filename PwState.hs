@@ -4,6 +4,7 @@ module PwState (
     initialState,
     processEvent,
     showState,
+
     -- * elems
     PwID (..),
     PwPath (..),

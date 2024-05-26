@@ -2,11 +2,12 @@ cabal-version:   3.0
 name:            pw-controller
 version:         0.1
 synopsis:        Apply rules to your pipewire links.
-description:     The goal of pw-controller is to ensure custom links are defined.
+description:
+  The goal of pw-controller is to ensure custom links are defined.
+
 category:        System
 author:          Tristan de Cacqueray
 maintainer:      tristan.cacqueray@gmail.com
-
 license:         GPL-3.0-only
 license-file:    LICENSE
 build-type:      Simple

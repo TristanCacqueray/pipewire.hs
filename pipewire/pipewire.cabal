@@ -1,0 +1,80 @@
+cabal-version:   3.0
+name:            pipewire
+version:         0.1
+
+-- synopsis:
+-- description:
+license:         GPL-3.0-only
+license-file:    LICENSE
+author:          Tristan Cacqueray
+maintainer:      tristan.cacqueray@gmail.com
+
+-- copyright:
+category:        System
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+-- extra-source-files:
+
+common common
+  build-depends:      base <5
+  default-language:   GHC2021
+  ghc-options:
+    -Wall -fwarn-incomplete-uni-patterns -Wno-partial-type-signatures
+    -fwrite-ide-info -Wno-missing-methods
+
+  default-extensions:
+    BlockArguments
+    DerivingStrategies
+    DuplicateRecordFields
+    ImportQualifiedPost
+    LambdaCase
+    OverloadedRecordDot
+    OverloadedStrings
+    PartialTypeSignatures
+    QuasiQuotes
+    StrictData
+    TemplateHaskell
+    ViewPatterns
+
+library
+  import:            common
+  exposed-modules:
+    Pipewire
+    Pipewire.Context
+    Pipewire.Internal
+    Pipewire.Raw
+    Pipewire.Structs
+
+  pkgconfig-depends: libpipewire-0.3
+  build-depends:
+    , base        ^>=4.18.2.0
+    , containers
+    , inline-c
+    , text
+
+  hs-source-dirs:    src
+
+flag examples
+  description: Build executable examples.
+  default:     False
+  manual:      True
+
+common examples
+  import:         common
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
+  hs-source-dirs: examples
+
+  if flag(examples)
+    build-depends: pipewire
+
+  else
+    buildable: False
+
+executable tutorial1
+  import:  examples
+  main-is: Tutorial1.hs
+
+executable tutorial2
+  import:  examples
+  main-is: Tutorial2.hs
