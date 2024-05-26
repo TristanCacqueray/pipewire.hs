@@ -24,8 +24,10 @@ main = do
     Raw.pw_context_destroy context
     Raw.pw_main_loop_destroy mainLoop
   where
-    handler pwid typ = do
+    handler pwid typ propsDict = do
+        props <- Raw.spaDictRead propsDict
         putStrLn $ "object: id:" <> show pwid <> " type:" <> show typ
+        mapM_ print props
 
     _stopAfterTimeout mainLoop =
         print =<< forkIO do

@@ -19,9 +19,9 @@ pwGetHeadersVersion = Raw.pw_get_headers_version >>= peekCString
 pwGetLibraryVersion :: IO Text
 pwGetLibraryVersion = Raw.pw_get_library_version >>= peekCString
 
-pwWithRegistryEvents :: (PwID -> Text -> IO ()) -> (PwRegistryEvents -> IO a) -> IO a
+pwWithRegistryEvents :: (PwID -> Text -> SpaDict -> IO ()) -> (PwRegistryEvents -> IO a) -> IO a
 pwWithRegistryEvents handler = Raw.pw_with_registry_event wrapper
   where
-    wrapper cuint cstr = do
+    wrapper cuint cstr props = do
         txt <- peekCString cstr
-        handler (PwID cuint) txt
+        handler (PwID cuint) txt props

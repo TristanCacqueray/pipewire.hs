@@ -5,16 +5,20 @@
 -- | The RAW bindings to the libpipewire, using 'Foreign.C.Types' and 'Pipewire.Structs'
 module Pipewire.Raw where
 
-import Foreign.C.String (CString)
-import Language.C.Inline qualified as C
-
+import Data.Vector qualified as V
+import Data.Vector.Storable.Mutable qualified as VM
 import Data.Word
 import Foreign (Ptr, allocaBytes)
+import Foreign.C.String (CString)
 import Foreign.C.Types
+import Language.C.Inline qualified as C
+
+import Data.Text (Text)
 import Pipewire.Context
+import Pipewire.Internal
 import Pipewire.Structs
 
-C.context (C.baseCtx <> C.bsCtx <> pwContext <> C.funCtx)
+C.context (C.baseCtx <> C.bsCtx <> pwContext <> C.funCtx <> C.vecCtx)
 C.include "<pipewire/pipewire.h>"
 
 pw_init :: IO ()
@@ -79,7 +83,7 @@ pw_with_spa_hook cb = allocaBytes
 type GlobalHandler = Ptr () -> Word32 -> Word32 -> CString -> Word32 -> Ptr SpaDictStruct -> IO ()
 
 -- | Create a local pw_registry_events structure
-pw_with_registry_event :: (Word32 -> CString -> IO ()) -> (PwRegistryEvents -> IO b) -> IO b
+pw_with_registry_event :: (Word32 -> CString -> SpaDict -> IO ()) -> (PwRegistryEvents -> IO b) -> IO b
 pw_with_registry_event handler cb = allocaBytes
     (fromIntegral size)
     \p -> do
@@ -92,10 +96,44 @@ pw_with_registry_event handler cb = allocaBytes
         }|]
         cb (PwRegistryEvents p)
   where
-    wrapper _data pwid _version name _ _ = handler pwid name
+    wrapper _data pwid _version name _ props = handler pwid name (SpaDict props)
 
     size = [C.pure| size_t {sizeof (struct pw_registry_events)} |]
 
 pw_registry_add_listener :: PwRegistry -> SpaHook -> PwRegistryEvents -> IO ()
 pw_registry_add_listener (PwRegistry registry) (SpaHook hook) (PwRegistryEvents pre) =
     [C.exp| void{pw_registry_add_listener($(struct pw_registry* registry), $(struct spa_hook* hook), $(struct pw_registry_events* pre), NULL)} |]
+
+-- | Read 'SpaDict' keys/values
+spaDictRead :: SpaDict -> IO (V.Vector (Text, Text))
+spaDictRead (SpaDict spaDict) = do
+    -- Create two mutable vectors to store the key and value char* pointer.
+    propSize <- readSize
+    (vecKey :: VM.IOVector CString) <- VM.new propSize
+    (vecValue :: VM.IOVector CString) <- VM.new propSize
+
+    -- Fill the vectors
+    [C.block| void {
+      // the actual spa_dict struct
+      struct spa_dict *spa_dict = $(struct spa_dict* spaDict);
+      // The mutable vectors
+      const char** keys = $vec-ptr:(const char **vecKey);
+      const char** values = $vec-ptr:(const char **vecValue);
+      // Use the 'spa_dict_for_each' macro to traverse the c struct
+      const struct spa_dict_item *item;
+      int item_pos = 0;
+      spa_dict_for_each(item, spa_dict) {
+        keys[item_pos] = item->key;
+        values[item_pos] = item->value;
+        item_pos += 1;
+      };
+    }|]
+
+    -- Read the CString into text and return a static vector
+    let readCString pos = do
+            keyStr <- VM.read vecKey pos
+            valStr <- VM.read vecValue pos
+            (,) <$> peekCString keyStr <*> peekCString valStr
+    V.generateM propSize readCString
+  where
+    readSize = fromIntegral <$> [C.exp| int{$(struct spa_dict* spaDict)->n_items}|]
