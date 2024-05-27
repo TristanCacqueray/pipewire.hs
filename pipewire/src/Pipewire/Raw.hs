@@ -84,23 +84,31 @@ pw_with_spa_hook cb = allocaBytes
   where
     size = [C.pure| size_t {sizeof (struct spa_hook)} |]
 
-type GlobalHandler = Ptr () -> Word32 -> Word32 -> CString -> Word32 -> Ptr SpaDictStruct -> IO ()
+type GlobalHandler = Word32 -> Text -> SpaDict -> IO ()
+type GlobalHandlerRaw = Ptr () -> Word32 -> Word32 -> CString -> Word32 -> Ptr SpaDictStruct -> IO ()
+
+type GlobalRemoveHandler = Word32 -> IO ()
+type GlobalRemoveHandlerRaw = Ptr () -> Word32 -> IO ()
 
 -- | Create a local pw_registry_events structure
-pw_with_registry_event :: (Word32 -> CString -> SpaDict -> IO ()) -> (PwRegistryEvents -> IO b) -> IO b
-pw_with_registry_event handler cb = allocaBytes
+pw_with_registry_event :: GlobalHandler -> GlobalRemoveHandler -> (PwRegistryEvents -> IO b) -> IO b
+pw_with_registry_event globalHandler globalRemoveHandler cb = allocaBytes
     (fromIntegral size)
     \p -> do
-        handlerP <- $(C.mkFunPtr [t|GlobalHandler|]) wrapper
+        globalP <- $(C.mkFunPtr [t|GlobalHandlerRaw|]) globalWrapper
+        globalRemoveP <- $(C.mkFunPtr [t|GlobalRemoveHandlerRaw|]) globalRemoveWrapper
         [C.block| void{
                 struct pw_registry_events* pre = $(struct pw_registry_events* p);
                 pre->version = PW_VERSION_REGISTRY_EVENTS;
-                pre->global = $(void (*handlerP)(void*, uint32_t, uint32_t, const char*, uint32_t version, const struct spa_dict * props));
-                pre->global_remove = NULL;
+                pre->global = $(void (*globalP)(void*, uint32_t, uint32_t, const char*, uint32_t version, const struct spa_dict * props));
+                pre->global_remove = $(void (*globalRemoveP)(void*, uint32_t));
         }|]
         cb (PwRegistryEvents p)
   where
-    wrapper _data pwid _version name _ props = handler pwid name (SpaDict props)
+    globalWrapper _data pwid _version cName _ props = do
+        name <- peekCString cName
+        globalHandler pwid name (SpaDict props)
+    globalRemoveWrapper _data id' = globalRemoveHandler id'
 
     size = [C.pure| size_t {sizeof (struct pw_registry_events)} |]
 

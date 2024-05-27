@@ -18,10 +18,14 @@ main =
 
         -- _stopAfterTimeout mainLoop
         Raw.pw_with_spa_hook \registryListener -> do
-            PW.withRegistryEvents handler \registryEvent -> do
+            PW.withRegistryEvents handler removeHandler \registryEvent -> do
                 Raw.pw_registry_add_listener registry registryListener registryEvent
                 print =<< Raw.pw_main_loop_run mainLoop
                 putStrLn "Done!"
+
+    removeHandler pwid = do
+        putStrLn $ "remove: " <> show pwid
+
     handler pwid typ propsDict = do
         props <- Raw.spaDictRead propsDict
         putStrLn $ "object: id:" <> show pwid <> " type:" <> show typ
