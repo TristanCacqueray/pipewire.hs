@@ -44,11 +44,12 @@ library
     Pipewire.CContext
     Pipewire.Core
     Pipewire.Internal
+    Pipewire.Protocol
     Pipewire.Raw
-    Pipewire.Utilities.Properties
-    Pipewire.Utilities.CContext
     Pipewire.SPA.Utilities.CContext
     Pipewire.SPA.Utilities.Hooks
+    Pipewire.Utilities.CContext
+    Pipewire.Utilities.Properties
 
   pkgconfig-depends: libpipewire-0.3
   build-depends:

@@ -17,6 +17,7 @@ import Data.Text (Text)
 
 import Pipewire.CContext
 import Pipewire.Internal
+import Pipewire.Protocol
 import Pipewire.SPA.Utilities.Hooks
 
 import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
@@ -95,10 +96,10 @@ pw_with_spa_hook cb = allocaBytes
   where
     size = [C.pure| size_t {sizeof (struct spa_hook)} |]
 
-type GlobalHandler = Word32 -> Text -> SpaDict -> IO ()
+type GlobalHandler = PwID -> Text -> SpaDict -> IO ()
 type GlobalHandlerRaw = Ptr () -> Word32 -> Word32 -> CString -> Word32 -> Ptr SpaDictStruct -> IO ()
 
-type GlobalRemoveHandler = Word32 -> IO ()
+type GlobalRemoveHandler = PwID -> IO ()
 type GlobalRemoveHandlerRaw = Ptr () -> Word32 -> IO ()
 
 -- | Create a local pw_registry_events structure
@@ -118,8 +119,8 @@ pw_with_registry_event globalHandler globalRemoveHandler cb = allocaBytes
   where
     globalWrapper _data pwid _version cName _ props = do
         name <- peekCString cName
-        globalHandler pwid name (SpaDict props)
-    globalRemoveWrapper _data id' = globalRemoveHandler id'
+        globalHandler (PwID $ fromIntegral pwid) name (SpaDict props)
+    globalRemoveWrapper _data id' = globalRemoveHandler (PwID $ fromIntegral id')
 
     size = [C.pure| size_t {sizeof (struct pw_registry_events)} |]
 

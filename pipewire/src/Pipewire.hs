@@ -1,14 +1,11 @@
 module Pipewire where
 
 import Data.Text (Text)
-import Data.Word (Word32)
 
 import Control.Exception (bracket, bracket_)
 import Pipewire.Internal
+import Pipewire.Protocol
 import Pipewire.Raw as Raw
-
-newtype PwID = PwID Word32
-    deriving newtype (Show)
 
 withPipewire :: IO a -> IO a
 withPipewire = bracket_ Raw.pw_init Raw.pw_deinit
@@ -29,6 +26,4 @@ getLibraryVersion :: IO Text
 getLibraryVersion = Raw.pw_get_library_version >>= peekCString
 
 withRegistryEvents :: (PwID -> Text -> SpaDict -> IO ()) -> (PwID -> IO ()) -> (PwRegistryEvents -> IO a) -> IO a
-withRegistryEvents handler removeHandler = Raw.pw_with_registry_event wrapper (removeHandler . PwID)
-  where
-    wrapper cuint txt props = handler (PwID cuint) txt props
+withRegistryEvents = Raw.pw_with_registry_event
