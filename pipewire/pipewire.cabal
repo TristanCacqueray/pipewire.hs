@@ -42,17 +42,21 @@ library
   exposed-modules:
     Pipewire
     Pipewire.Context
+    Pipewire.Core
+    Pipewire.CoreCTX
     Pipewire.Internal
     Pipewire.Raw
     Pipewire.Structs
+    Pipewire.Utilities.Properties
+    Pipewire.Utilities.PropertiesCTX
 
   pkgconfig-depends: libpipewire-0.3
   build-depends:
     , base        ^>=4.18.2.0
     , containers
-    , vector
     , inline-c
     , text
+    , vector
 
   hs-source-dirs:    src
 

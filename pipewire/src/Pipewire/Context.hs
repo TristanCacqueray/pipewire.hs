@@ -5,7 +5,14 @@ import Data.Map.Strict qualified as Map
 import Language.C.Inline.Context (Context (..))
 import Language.C.Types
 
-import Pipewire.Structs
+data PwLoopStruct
+data PwMainLoopStruct
+data PwContextStruct
+data PwCoreStruct
+data PwRegistryStruct
+data PwRegistryEventsStruct
+data SpaHookStruct
+data SpaDictStruct
 
 pwContext :: Context
 pwContext =
