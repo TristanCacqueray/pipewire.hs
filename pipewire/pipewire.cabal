@@ -84,3 +84,7 @@ executable tutorial1
 executable tutorial2
   import:  examples
   main-is: Tutorial2.hs
+
+executable tutorial3
+  import:  examples
+  main-is: Tutorial3.hs
