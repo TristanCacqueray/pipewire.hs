@@ -1,18 +1,16 @@
-module Pipewire.Utilities.PropertiesCTX where
+module Pipewire.SPA.Utilities.CContext where
 
 import Data.Map.Strict qualified as Map
-import Foreign (Ptr)
 import Language.C.Inline.Context (Context (..))
 import Language.C.Types (TypeSpecifier (Struct))
 
-newtype PwProperties = PwProperties (Ptr PwPropertiesStruct)
-data PwPropertiesStruct
+data SpaHookStruct
 
 pwContext :: Context
 pwContext =
     mempty
         { ctxTypesTable =
             Map.fromList
-                [ (Struct "pw_properties", [t|PwPropertiesStruct|])
+                [ (Struct "spa_hook", [t|SpaHookStruct|])
                 ]
         }

@@ -6,7 +6,7 @@ module Pipewire.Utilities.Properties where
 
 import Language.C.Inline qualified as C
 
-import Pipewire.Utilities.PropertiesCTX
+import Pipewire.Utilities.CContext
 
 C.context (C.baseCtx <> pwContext)
 

@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Data.Word (Word32)
 import Foreign.C (CInt, CString)
 
-import Pipewire.CoreCTX
+import Pipewire.CContext
 import Pipewire.Internal (peekCString)
 
 C.context (C.baseCtx <> pwContext)

@@ -1,18 +1,18 @@
-module Pipewire.CoreCTX where
+module Pipewire.Utilities.CContext where
 
 import Data.Map.Strict qualified as Map
+import Foreign (Ptr)
 import Language.C.Inline.Context (Context (..))
 import Language.C.Types (TypeSpecifier (Struct))
 
-data PwCoreEventsStruct
-data PwCoreInfoStruct
+newtype PwProperties = PwProperties (Ptr PwPropertiesStruct)
+data PwPropertiesStruct
 
 pwContext :: Context
 pwContext =
     mempty
         { ctxTypesTable =
             Map.fromList
-                [ (Struct "pw_core_info", [t|PwCoreInfoStruct|])
-                , (Struct "pw_core_events", [t|PwCoreEventsStruct|])
+                [ (Struct "pw_properties", [t|PwPropertiesStruct|])
                 ]
         }

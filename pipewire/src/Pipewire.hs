@@ -5,8 +5,7 @@ import Data.Word (Word32)
 
 import Control.Exception (bracket, bracket_)
 import Pipewire.Internal
-import Pipewire.Raw qualified as Raw
-import Pipewire.Structs
+import Pipewire.Raw as Raw
 
 newtype PwID = PwID Word32
     deriving newtype (Show)

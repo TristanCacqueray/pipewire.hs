@@ -14,11 +14,22 @@ import Foreign.C.Types
 import Language.C.Inline qualified as C
 
 import Data.Text (Text)
-import Pipewire.Context
-import Pipewire.Internal
-import Pipewire.Structs
 
-C.context (C.baseCtx <> C.bsCtx <> pwContext <> C.funCtx <> C.vecCtx)
+import Pipewire.CContext
+import Pipewire.Internal
+import Pipewire.SPA.Utilities.Hooks
+
+import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
+
+newtype PwLoop = PwLoop (Ptr PwLoopStruct)
+newtype PwMainLoop = PwMainLoop (Ptr PwMainLoopStruct)
+newtype PwContext = PwContext (Ptr PwContextStruct)
+newtype PwCore = PwCore (Ptr PwCoreStruct)
+newtype PwRegistry = PwRegistry (Ptr PwRegistryStruct)
+newtype PwRegistryEvents = PwRegistryEvents (Ptr PwRegistryEventsStruct)
+newtype SpaDict = SpaDict (Ptr SpaDictStruct)
+
+C.context (C.baseCtx <> C.bsCtx <> pwContext <> C.funCtx <> C.vecCtx <> SPAUtils.pwContext)
 C.include "<pipewire/pipewire.h>"
 
 -- Q: do we need to pass the real argc/argv ?
