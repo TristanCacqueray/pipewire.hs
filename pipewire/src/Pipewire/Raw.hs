@@ -21,8 +21,12 @@ import Pipewire.Structs
 C.context (C.baseCtx <> C.bsCtx <> pwContext <> C.funCtx <> C.vecCtx)
 C.include "<pipewire/pipewire.h>"
 
+-- Q: do we need to pass the real argc/argv ?
 pw_init :: IO ()
 pw_init = [C.exp| void{pw_init(NULL, NULL)} |]
+
+pw_deinit :: IO ()
+pw_deinit = [C.exp| void{pw_deinit()} |]
 
 pw_get_headers_version :: IO CString
 pw_get_headers_version = [C.exp| const char*{pw_get_headers_version()} |]
@@ -107,19 +111,25 @@ pw_registry_add_listener (PwRegistry registry) (SpaHook hook) (PwRegistryEvents 
 -- | Read 'SpaDict' keys/values
 spaDictRead :: SpaDict -> IO (V.Vector (Text, Text))
 spaDictRead (SpaDict spaDict) = do
+    -- Read the dictionary size
+    propSize <-
+        fromIntegral
+            <$> [C.exp| int{$(struct spa_dict* spaDict)->n_items}|]
+
     -- Create two mutable vectors to store the key and value char* pointer.
-    propSize <- readSize
-    (vecKey :: VM.IOVector CString) <- VM.new propSize
-    (vecValue :: VM.IOVector CString) <- VM.new propSize
+    vecKey <- VM.new propSize
+    vecValue <- VM.new propSize
 
     -- Fill the vectors
     [C.block| void {
-      // the actual spa_dict struct
+      // The Haskell spaDict
       struct spa_dict *spa_dict = $(struct spa_dict* spaDict);
-      // The mutable vectors
+
+      // The Haskell vectors
       const char** keys = $vec-ptr:(const char **vecKey);
       const char** values = $vec-ptr:(const char **vecValue);
-      // Use the 'spa_dict_for_each' macro to traverse the c struct
+
+      // Use the provided 'spa_dict_for_each' macro to traverse the c struct
       const struct spa_dict_item *item;
       int item_pos = 0;
       spa_dict_for_each(item, spa_dict) {
@@ -129,11 +139,9 @@ spaDictRead (SpaDict spaDict) = do
       };
     }|]
 
-    -- Read the CString into text and return a static vector
+    -- Convert the CString vectors into a vector of Text (key,value) tuples
     let readCString pos = do
-            keyStr <- VM.read vecKey pos
-            valStr <- VM.read vecValue pos
-            (,) <$> peekCString keyStr <*> peekCString valStr
+            key <- peekCString =<< VM.read vecKey pos
+            val <- peekCString =<< VM.read vecValue pos
+            pure (key, val)
     V.generateM propSize readCString
-  where
-    readSize = fromIntegral <$> [C.exp| int{$(struct spa_dict* spaDict)->n_items}|]
