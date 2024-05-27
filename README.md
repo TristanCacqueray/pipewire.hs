@@ -62,10 +62,7 @@ The code is implemented as follow:
 Run the tests with:
 
 ```
-cabal build --flags=example -O0 all
-cabal repl --with-ghc=doctest exe:pw-controller
-fourmolu -i *.hs ./pipewire
-cabal-fmt -i ./pw-controller.cabal ./pipewire/pipewire.cabal
+just ci
 ```
 
 [wireplumber]: https://docs.pipewire.org/group__api__pw__core.html
