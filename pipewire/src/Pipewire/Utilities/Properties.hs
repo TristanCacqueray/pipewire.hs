@@ -1,9 +1,6 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use camelCase" #-}
-
 module Pipewire.Utilities.Properties where
 
+import Foreign (Ptr)
 import Language.C.Inline qualified as C
 
 import Pipewire.Utilities.CContext
@@ -11,6 +8,8 @@ import Pipewire.Utilities.CContext
 C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/properties.h>"
+
+newtype PwProperties = PwProperties (Ptr PwPropertiesStruct)
 
 pw_properties_new :: IO PwProperties
 pw_properties_new =

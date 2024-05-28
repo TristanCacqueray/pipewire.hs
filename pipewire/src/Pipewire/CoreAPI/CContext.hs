@@ -1,5 +1,4 @@
--- | This modules provides the inline-c context to convert C types to Haskell
-module Pipewire.CContext where
+module Pipewire.CoreAPI.CContext where
 
 import Data.Map.Strict qualified as Map
 import Language.C.Inline.Context (Context (..))
@@ -11,7 +10,6 @@ data PwContextStruct
 data PwCoreStruct
 data PwRegistryStruct
 data PwRegistryEventsStruct
-data SpaDictStruct
 
 data PwCoreEventsStruct
 data PwCoreInfoStruct
@@ -27,7 +25,6 @@ pwContext =
                 , (Struct "pw_core", [t|PwCoreStruct|])
                 , (Struct "pw_registry", [t|PwRegistryStruct|])
                 , (Struct "pw_registry_events", [t|PwRegistryEventsStruct|])
-                , (Struct "spa_dict", [t|SpaDictStruct|])
                 , (Struct "pw_core_info", [t|PwCoreInfoStruct|])
                 , (Struct "pw_core_events", [t|PwCoreEventsStruct|])
                 ]

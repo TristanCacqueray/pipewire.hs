@@ -26,7 +26,7 @@
       devTools = [
         pkgs.haskell-language-server
         pkgs.ghcid
-        pkgs.haskellPackages.cabal-fmt
+        pkgs.haskellPackages.cabal-gild
         pkgs.just
         pkgs.haskellPackages.doctest
         pkgs.pipewire

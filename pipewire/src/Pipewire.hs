@@ -1,29 +1,88 @@
-module Pipewire where
+module Pipewire (
+    -- * High level API
+    withPipewire,
+    withMainLoop,
+    withContext,
+    withCore,
+
+    -- * Protocol
+    module Pipewire.Protocol,
+
+    -- * Core API
+
+    -- ** Initialization
+    module Pipewire.CoreAPI.Initialization,
+
+    -- ** Main Loop
+    module Pipewire.CoreAPI.MainLoop,
+
+    -- ** Context
+    module Pipewire.CoreAPI.Context,
+
+    -- ** Core
+    module Pipewire.CoreAPI.Core,
+
+    -- ** Loop
+    module Pipewire.CoreAPI.Loop,
+
+    -- ** Registry
+    module Pipewire.CoreAPI.Registry,
+
+    -- * Utilities
+
+    -- ** Properties
+    module Pipewire.Utilities.Properties,
+
+    -- * SPA
+
+    -- ** Utilities
+
+    -- *** Dictionary
+    module Pipewire.SPA.Utilities.Dictionary,
+
+    -- *** Hooks
+    module Pipewire.SPA.Utilities.Hooks,
+
+    -- * Helpers
+    getHeadersVersion,
+    getLibraryVersion,
+)
+where
 
 import Data.Text (Text)
 
 import Control.Exception (bracket, bracket_)
+import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
+import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, with_pw_core_events)
+import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
+import Pipewire.CoreAPI.Loop (PwLoop)
+import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run)
+import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, with_pw_registry_events)
 import Pipewire.Internal
-import Pipewire.Protocol
-import Pipewire.Raw as Raw
+import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
+import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictRead)
+import Pipewire.SPA.Utilities.Hooks (SpaHook, with_spa_hook)
+import Pipewire.Utilities.Properties (PwProperties, pw_properties_new)
+
+import Foreign.C (CString)
+import Language.C.Inline qualified as C
+
+C.include "<pipewire/pipewire.h>"
 
 withPipewire :: IO a -> IO a
-withPipewire = bracket_ Raw.pw_init Raw.pw_deinit
+withPipewire = bracket_ pw_init pw_deinit
 
 withMainLoop :: (PwMainLoop -> IO a) -> IO a
-withMainLoop = bracket Raw.pw_main_loop_new Raw.pw_main_loop_destroy
+withMainLoop = bracket pw_main_loop_new pw_main_loop_destroy
 
 withContext :: PwLoop -> (PwContext -> IO a) -> IO a
-withContext loop = bracket (Raw.pw_context_new loop) Raw.pw_context_destroy
+withContext loop = bracket (pw_context_new loop) pw_context_destroy
 
 withCore :: PwContext -> (PwCore -> IO a) -> IO a
-withCore context = bracket (Raw.pw_context_connect context) Raw.pw_core_disconnect
+withCore context = bracket (pw_context_connect context) pw_core_disconnect
 
 getHeadersVersion :: IO Text
-getHeadersVersion = Raw.pw_get_headers_version >>= peekCString
+getHeadersVersion = ([C.exp| const char*{pw_get_headers_version()} |] :: IO CString) >>= peekCString
 
 getLibraryVersion :: IO Text
-getLibraryVersion = Raw.pw_get_library_version >>= peekCString
-
-withRegistryEvents :: (PwID -> Text -> SpaDict -> IO ()) -> (PwID -> IO ()) -> (PwRegistryEvents -> IO a) -> IO a
-withRegistryEvents = Raw.pw_with_registry_event
+getLibraryVersion = ([C.exp| const char*{pw_get_library_version()} |] :: IO CString) >>= peekCString
