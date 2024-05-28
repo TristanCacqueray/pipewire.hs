@@ -1,12 +1,10 @@
 module Pipewire.SPA.Utilities.Dictionary where
 
-import Data.Text (Text)
 import Data.Vector qualified as V
 import Data.Vector.Storable.Mutable qualified as VM
-import Foreign (Ptr)
-import Foreign.C.Types
 import Language.C.Inline qualified as C
 
+import Foreign (Storable (peek), alloca, nullPtr)
 import Pipewire.Internal
 import Pipewire.SPA.Utilities.CContext
 
@@ -14,6 +12,18 @@ newtype SpaDict = SpaDict (Ptr SpaDictStruct)
 
 C.context (C.baseCtx <> C.vecCtx <> pwContext)
 C.include "<spa/utils/dict.h>"
+
+spaDictLookup :: SpaDict -> Text -> IO (Maybe Text)
+spaDictLookup (SpaDict spaDict) key = withCString key \kPtr -> alloca \(cPtr :: Ptr CString) -> do
+    [C.block| void{
+    const char** result = $(const char** cPtr);
+    struct spa_dict *spa_dict = $(struct spa_dict* spaDict);
+    *result = spa_dict_lookup(spa_dict, $(const char* kPtr));
+  }|]
+    result <- peek cPtr
+    if result == nullPtr
+        then pure Nothing
+        else Just <$> peekCString result
 
 -- | Read 'SpaDict' keys/values
 spaDictRead :: SpaDict -> IO (V.Vector (Text, Text))

@@ -1,14 +1,11 @@
 module Pipewire.CoreAPI.Core where
 
 import Control.Exception (finally)
-import Data.Text (Text)
-import Data.Word (Word32)
-import Foreign (Ptr, allocaBytes, freeHaskellFunPtr)
-import Foreign.C (CInt, CString)
+import Foreign (allocaBytes, freeHaskellFunPtr)
 import Language.C.Inline qualified as C
 
 import Pipewire.CoreAPI.CContext
-import Pipewire.Internal (peekCString)
+import Pipewire.Internal
 import Pipewire.Protocol
 import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..))

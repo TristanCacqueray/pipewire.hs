@@ -1,1 +1,2 @@
 packages: ./pw-controller.cabal ./pipewire
+flags: +examples

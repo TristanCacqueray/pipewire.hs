@@ -1,15 +1,12 @@
 module Pipewire.CoreAPI.Registry where
 
 import Control.Exception (finally)
-import Data.Text (Text)
-import Data.Word (Word32)
-import Foreign (Ptr, allocaBytes, freeHaskellFunPtr)
-import Foreign.C (CString)
+import Foreign (allocaBytes, freeHaskellFunPtr)
 import Language.C.Inline qualified as C
 
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Core (PwRegistry (..))
-import Pipewire.Internal (peekCString)
+import Pipewire.Internal
 import Pipewire.Protocol
 import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Dictionary (SpaDict (..))
@@ -21,7 +18,7 @@ C.include "<pipewire/core.h>"
 
 newtype PwRegistryEvents = PwRegistryEvents (Ptr PwRegistryEventsStruct)
 
-type GlobalHandler = PwID -> Text -> SpaDict -> IO ()
+type GlobalHandler = PwID -> Text -> PwVersion -> SpaDict -> IO ()
 type GlobalHandlerRaw = Ptr () -> Word32 -> Word32 -> CString -> Word32 -> Ptr SPAUtils.SpaDictStruct -> IO ()
 
 type GlobalRemoveHandler = PwID -> IO ()
@@ -44,9 +41,9 @@ with_pw_registry_events globalHandler globalRemoveHandler cb = allocaBytes
             freeHaskellFunPtr globalP
             freeHaskellFunPtr globalRemoveP
   where
-    globalWrapper _data pwid _version cName _ props = do
+    globalWrapper _data pwid _permission cName version props = do
         name <- peekCString cName
-        globalHandler (PwID $ fromIntegral pwid) name (SpaDict props)
+        globalHandler (PwID $ fromIntegral pwid) name (PwVersion $ fromIntegral version) (SpaDict props)
     globalRemoveWrapper _data id' = globalRemoveHandler (PwID $ fromIntegral id')
 
     size = [C.pure| size_t {sizeof (struct pw_registry_events)} |]

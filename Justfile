@@ -4,5 +4,5 @@ ci:
   cabal build --flags=examples -O0 all
   cabal repl --with-ghc=doctest exe:pw-controller
 
-dev:
-  watchexec cabal build -O0 --flag=examples exe:tutorial3
+dev target:
+  watchexec cabal build -O0 --flag=examples exe:{{target}}

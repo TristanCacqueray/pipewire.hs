@@ -7,6 +7,7 @@ module Pipewire (
 
     -- * Protocol
     module Pipewire.Protocol,
+    module Pipewire.Constants,
 
     -- * Core API
 
@@ -49,9 +50,10 @@ module Pipewire (
 )
 where
 
-import Data.Text (Text)
-
 import Control.Exception (bracket, bracket_)
+import Language.C.Inline qualified as C
+
+import Pipewire.Constants
 import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
 import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, with_pw_core_events)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
@@ -60,12 +62,9 @@ import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, with_pw_registry_events)
 import Pipewire.Internal
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
-import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictRead)
+import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictRead)
 import Pipewire.SPA.Utilities.Hooks (SpaHook, with_spa_hook)
-import Pipewire.Utilities.Properties (PwProperties, pw_properties_new)
-
-import Foreign.C (CString)
-import Language.C.Inline qualified as C
+import Pipewire.Utilities.Properties (PwProperties, pw_properties_get, pw_properties_new, pw_properties_new_dict, pw_properties_set)
 
 C.include "<pipewire/pipewire.h>"
 

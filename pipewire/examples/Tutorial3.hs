@@ -45,4 +45,4 @@ main =
     removeHandler pwid = do
         putStrLn $ "remove: " <> show pwid
 
-    handler _pwid _typ _propsDict = pure ()
+    handler _pwid _typ _version _propsDict = pure ()

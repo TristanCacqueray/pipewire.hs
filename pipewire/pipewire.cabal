@@ -42,6 +42,7 @@ library
   -- cabal-gild: discover src
   exposed-modules:
     Pipewire
+    Pipewire.Constants
     Pipewire.CoreAPI.CContext
     Pipewire.CoreAPI.Context
     Pipewire.CoreAPI.Core
@@ -60,9 +61,12 @@ library
   pkgconfig-depends: libpipewire-0.3
   build-depends:
     base ^>=4.18.2.0,
+    bytestring,
     containers,
     inline-c,
+    stm,
     text,
+    unix,
     vector,
 
   hs-source-dirs: src
@@ -82,7 +86,10 @@ common examples
   hs-source-dirs: examples
 
   if flag(examples)
-    build-depends: pipewire
+    build-depends:
+      pipewire,
+      stm,
+      text,
   else
     buildable: False
 
@@ -97,3 +104,7 @@ executable tutorial2
 executable tutorial3
   import: examples
   main-is: Tutorial3.hs
+
+executable hs-pw-link
+  import: examples
+  main-is: PwLink.hs

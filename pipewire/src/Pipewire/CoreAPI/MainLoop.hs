@@ -1,11 +1,10 @@
 module Pipewire.CoreAPI.MainLoop where
 
-import Foreign (Ptr)
-import Foreign.C.Types
 import Language.C.Inline qualified as C
 
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Loop (PwLoop (..))
+import Pipewire.Internal
 
 newtype PwContext = PwContext (Ptr PwContextStruct)
 

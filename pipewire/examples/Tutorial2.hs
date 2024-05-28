@@ -25,9 +25,9 @@ main =
     removeHandler pwid = do
         putStrLn $ "remove: " <> show pwid
 
-    handler pwid typ propsDict = do
+    handler pwid typ version propsDict = do
         props <- PW.spaDictRead propsDict
-        putStrLn $ "object: id:" <> show pwid <> " type:" <> show typ
+        putStrLn $ "object: id:" <> show pwid <> " type:" <> show typ <> " version:" <> show version
         mapM_ print props
 
     _stopAfterTimeout mainLoop =
