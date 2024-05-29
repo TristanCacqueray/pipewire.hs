@@ -2,7 +2,6 @@ module Pipewire.Utilities.Properties where
 
 import Language.C.Inline qualified as C
 
-import Foreign (Storable (peek), alloca, nullPtr)
 import Pipewire.Internal
 import Pipewire.SPA.Utilities.CContext qualified as SPA
 import Pipewire.SPA.Utilities.Dictionary (SpaDict (..))
@@ -29,13 +28,12 @@ pw_properties_set (PwProperties pwProperties) key val =
             [C.exp| void{pw_properties_set($(struct pw_properties* pwProperties), $(const char* keyPtr), $(const char* valPtr))}|]
 
 pw_properties_get :: PwProperties -> Text -> IO (Maybe Text)
-pw_properties_get (PwProperties pwProperties) key = withCString key \kPtr -> alloca \(cPtr :: Ptr CString) -> do
-    [C.block| void{
-    const char** result = $(const char** cPtr);
-    struct pw_properties *props = $(struct pw_properties* pwProperties);
-    *result = pw_properties_get(props, $(const char* kPtr));
-  }|]
-    result <- peek cPtr
+pw_properties_get (PwProperties pwProperties) key = withCString key \kPtr -> do
+    result <-
+        [C.block| const char*{
+      struct pw_properties *props = $(struct pw_properties* pwProperties);
+      return pw_properties_get(props, $(const char* kPtr));
+    }|]
     if result == nullPtr
         then pure Nothing
         else Just <$> peekCString result

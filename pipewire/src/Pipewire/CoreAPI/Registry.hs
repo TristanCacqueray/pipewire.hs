@@ -51,3 +51,7 @@ with_pw_registry_events globalHandler globalRemoveHandler cb = allocaBytes
 pw_registry_add_listener :: PwRegistry -> SpaHook -> PwRegistryEvents -> IO ()
 pw_registry_add_listener (PwRegistry registry) (SpaHook hook) (PwRegistryEvents pre) =
     [C.exp| void{pw_registry_add_listener($(struct pw_registry* registry), $(struct spa_hook* hook), $(struct pw_registry_events* pre), NULL)} |]
+
+pw_registry_destroy :: PwRegistry -> PwID -> IO ()
+pw_registry_destroy (PwRegistry registry) (PwID (fromIntegral -> pwid)) = do
+    [C.exp| void{pw_registry_destroy($(struct pw_registry* registry), $(int pwid))}|]

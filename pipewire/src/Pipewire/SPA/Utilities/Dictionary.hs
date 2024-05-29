@@ -1,10 +1,10 @@
 module Pipewire.SPA.Utilities.Dictionary where
 
+import Data.Text.Read qualified as Text
 import Data.Vector qualified as V
 import Data.Vector.Storable.Mutable qualified as VM
 import Language.C.Inline qualified as C
 
-import Foreign (Storable (peek), alloca, nullPtr)
 import Pipewire.Internal
 import Pipewire.SPA.Utilities.CContext
 
@@ -14,16 +14,24 @@ C.context (C.baseCtx <> C.vecCtx <> pwContext)
 C.include "<spa/utils/dict.h>"
 
 spaDictLookup :: SpaDict -> Text -> IO (Maybe Text)
-spaDictLookup (SpaDict spaDict) key = withCString key \kPtr -> alloca \(cPtr :: Ptr CString) -> do
-    [C.block| void{
-    const char** result = $(const char** cPtr);
-    struct spa_dict *spa_dict = $(struct spa_dict* spaDict);
-    *result = spa_dict_lookup(spa_dict, $(const char* kPtr));
-  }|]
-    result <- peek cPtr
+spaDictLookup (SpaDict spaDict) key = withCString key \kPtr -> do
+    result <-
+        [C.block| const char*{
+      struct spa_dict *spa_dict = $(struct spa_dict* spaDict);
+      return spa_dict_lookup(spa_dict, $(const char* kPtr));
+    }|]
     if result == nullPtr
         then pure Nothing
         else Just <$> peekCString result
+
+spaDictLookupInt :: SpaDict -> Text -> IO (Maybe Int)
+spaDictLookupInt dict key = readInt <$> spaDictLookup dict key
+  where
+    readInt = \case
+        Nothing -> Nothing
+        Just txt -> case Text.decimal txt of
+            Right (n, "") -> pure n
+            _ -> Nothing
 
 -- | Read 'SpaDict' keys/values
 spaDictRead :: SpaDict -> IO (V.Vector (Text, Text))

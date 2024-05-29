@@ -9,6 +9,7 @@ module Pipewire.Internal (
     CInt,
     CString,
     Ptr,
+    nullPtr,
 
     -- * text
     Text,
@@ -20,7 +21,7 @@ import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Foreign (withCString)
 import Data.Word (Word32)
-import Foreign (Ptr)
+import Foreign (Ptr, nullPtr)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CInt)
 

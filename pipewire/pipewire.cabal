@@ -50,6 +50,7 @@ library
     Pipewire.CoreAPI.Loop
     Pipewire.CoreAPI.MainLoop
     Pipewire.CoreAPI.Registry
+    Pipewire.IDMap
     Pipewire.Internal
     Pipewire.Protocol
     Pipewire.SPA.Utilities.CContext
@@ -88,7 +89,6 @@ common examples
   if flag(examples)
     build-depends:
       pipewire,
-      stm,
       text,
   else
     buildable: False

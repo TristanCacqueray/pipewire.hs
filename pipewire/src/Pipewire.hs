@@ -1,5 +1,13 @@
 module Pipewire (
     -- * High level API
+    PwInstance (..),
+    RegistryEvent (..),
+    withInstance,
+    CoreError (..),
+    syncState,
+    syncState_,
+
+    -- * Mid level bracket API
     withPipewire,
     withMainLoop,
     withContext,
@@ -53,16 +61,21 @@ where
 import Control.Exception (bracket, bracket_)
 import Language.C.Inline qualified as C
 
+import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, withMVar)
+import Control.Monad (void, when)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Pipewire.Constants
 import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
-import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, with_pw_core_events)
+import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, PwRegistry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, with_pw_core_events)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
 import Pipewire.CoreAPI.Loop (PwLoop)
 import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run)
-import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, with_pw_registry_events)
+import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, with_pw_registry_events)
 import Pipewire.Internal
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
-import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictRead)
+import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead)
 import Pipewire.SPA.Utilities.Hooks (SpaHook, with_spa_hook)
 import Pipewire.Utilities.Properties (PwProperties, pw_properties_get, pw_properties_new, pw_properties_new_dict, pw_properties_set)
 
@@ -85,3 +98,72 @@ getHeadersVersion = ([C.exp| const char*{pw_get_headers_version()} |] :: IO CStr
 
 getLibraryVersion :: IO Text
 getLibraryVersion = ([C.exp| const char*{pw_get_library_version()} |] :: IO CString) >>= peekCString
+
+-- | A pipewire instance
+data PwInstance state = PwInstance
+    { stateVar :: MVar state
+    , mainLoop :: PwMainLoop
+    , core :: PwCore
+    , registry :: PwRegistry
+    , sync :: IORef SeqID
+    , errorsVar :: MVar [CoreError]
+    }
+
+-- | A pipewire error
+data CoreError = CoreError
+    { pwid :: PwID
+    , code :: Int
+    , message :: Text
+    }
+    deriving (Show)
+
+-- | A registry event
+data RegistryEvent = Added PwID Text SpaDict | Removed PwID
+
+-- | Like 'syncState' but throwing an error if there was any pipewire error.
+syncState_ :: PwInstance state -> (state -> IO a) -> IO a
+syncState_ pwInstance cb = syncState pwInstance \case
+    Left errs -> mapM_ print errs >> error "pw core failed"
+    Right state -> cb state
+
+-- | Ensure all the events have been processed and access the state.
+syncState :: PwInstance state -> (Either (NonEmpty CoreError) state -> IO a) -> IO a
+syncState pwInstance cb = do
+    -- Write the expected SeqID so that the core handler stop the loop
+    writeIORef pwInstance.sync =<< pw_core_sync pwInstance.core pw_id_core
+    -- Start the loop
+    void $ pw_main_loop_run pwInstance.mainLoop
+    -- Call back with the finalized state
+    errors <- readMVar pwInstance.errorsVar
+    case NE.nonEmpty errors of
+        Just errs -> cb (Left errs)
+        Nothing -> withMVar pwInstance.stateVar (cb . Right)
+
+-- | Create a new 'PwInstance' by providing an initial state and a registry update handler.
+withInstance :: state -> (RegistryEvent -> state -> IO state) -> (PwInstance state -> IO a) -> IO a
+withInstance initialState updateState cb =
+    withPipewire do
+        withMainLoop $ \mainLoop -> do
+            loop <- pw_main_loop_get_loop mainLoop
+            withContext loop \context -> do
+                withCore context \core -> do
+                    sync <- newIORef (SeqID 0)
+                    errorsVar <- newMVar []
+                    with_pw_core_events infoHandler (doneHandler mainLoop sync) (errorHandler errorsVar) \coreEvents -> do
+                        with_spa_hook \coreListener -> do
+                            pw_core_add_listener core coreListener coreEvents
+                            with_spa_hook \registryListener -> do
+                                stateVar <- newMVar initialState
+                                with_pw_registry_events (handler stateVar) (removeHandler stateVar) \registryEvent -> do
+                                    registry <- pw_core_get_registry core
+                                    pw_registry_add_listener registry registryListener registryEvent
+                                    cb PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
+  where
+    handler stateVar pwid name _ props = modifyMVar_ stateVar (updateState $ Added pwid name props)
+    removeHandler stateVar pwid = modifyMVar_ stateVar (updateState $ Removed pwid)
+    infoHandler _pwinfo = pure ()
+    errorHandler errorVar pwid _seq' res msg = modifyMVar_ errorVar (\xs -> pure $ CoreError pwid res msg : xs)
+    doneHandler mainLoop sync _pwid seqid = do
+        pending <- readIORef sync
+        when (pending == seqid) do
+            void $ pw_main_loop_quit mainLoop
