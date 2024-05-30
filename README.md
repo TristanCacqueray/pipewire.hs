@@ -1,8 +1,26 @@
-# pw-controller - apply rules to pipewire links
+# pipewire.hs
+
+> [Pipewire](https://pipewire.org) is a project that aims to greatly improve handling of audio and video under Linux. It provides a low-latency, graph-based processing engine on top of audio and video devices that can be used to support the use cases currently handled by both PulseAudio and JACK.
+
+This project contains Haskell bindings to the libpipewire.
+This allows you to leverage the multimedia framework directly from your Haskell program.
+
+## Project Status
+
+The library features a high level binding to integrate `pw-mon` and `pw-link` for the pw-controller project described below.
+
+- Documentation: <https://tristancacqueray.github.io/pipewire.hs/Pipewire.html>
+- Source entrypoint: [Pipewire.hs](./pipewire/src/Pipewire.hs)
+- PwLink demo: [PwLink.hs](./pipewire/examples/PwLink.hs)
+
+Audio and video source/sinks are not currently implemented.
+
+
+## pw-controller - apply rules to pipewire links
 
 The goal of pw-controller is to ensure custom links are present.
 pw-controller is similar to [WirePlumber][wireplumber] but it uses a simpler configuration which features higher level rules.
-pw-controller monitors the pipewire state by running `pw-mon` and it issues `pw-link` commands based on such rules:
+pw-controller presently monitors the pipewire state by running `pw-mon` and it issues `pw-link` commands based on such rules:
 
 ```
 # When the MiniFuse is connected, setup Reaper i/o:
@@ -28,7 +46,7 @@ pw-controller reacts to changes in pipewire state to continuously produce such a
 - Ensure video calls are played to headset and not on speaker.
 - Ensure that the laptop microphone is disconnected when a headset is plugged in.
 
-## Usage
+### Usage
 
 > Note: this requires the following change: [pipewire#1998](https://gitlab.freedesktop.org/pipewire/pipewire/-/merge_requests/1998)
 
@@ -48,7 +66,7 @@ Available options:
 
 The implementation works for the above config, adding new features is welcome, for example:
 
-- Implement proper binding (started in [pipewire](./pipewire))
+- Improve the bindings
 - Provide a GUI/web page to show the status
 - Add more conditions and actions
 
