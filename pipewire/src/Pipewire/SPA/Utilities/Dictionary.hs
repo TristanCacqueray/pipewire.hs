@@ -5,6 +5,7 @@ import Data.Vector qualified as V
 import Data.Vector.Storable.Mutable qualified as VM
 import Language.C.Inline qualified as C
 
+import Foreign (allocaBytes)
 import Pipewire.Internal
 import Pipewire.SPA.Utilities.CContext
 
@@ -70,3 +71,14 @@ spaDictRead (SpaDict spaDict) = do
             val <- peekCString =<< VM.read vecValue pos
             pure (key, val)
     V.generateM propSize readCString
+
+-- | Create a local spa_hook structure
+with_spa_dict :: (SpaDict -> IO a) -> IO a
+with_spa_dict cb = allocaBytes
+    (fromIntegral size)
+    \p -> do
+        -- Do we need to memset after allocaBytes ?
+        [C.exp| void{spa_memzero($(struct spa_dict* p), $(size_t size))} |]
+        cb (SpaDict p)
+  where
+    size = [C.pure| size_t {sizeof (struct spa_dict)} |]

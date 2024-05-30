@@ -1,6 +1,7 @@
 module Pipewire.Constants where
 
 import Data.Text
+import Pipewire.Protocol (PwVersion (..))
 
 {- | Update with
 awk '/#define PW_TYPE_INTERFACE_/ { print "m" $2 " :: Text"; print "m" $2 " = " $4; print "" }' pipewire/*.h

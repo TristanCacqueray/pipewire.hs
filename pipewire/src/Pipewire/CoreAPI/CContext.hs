@@ -10,9 +10,14 @@ data PwContextStruct
 data PwCoreStruct
 data PwRegistryStruct
 data PwRegistryEventsStruct
+data PwProxyStruct
 
 data PwCoreEventsStruct
 data PwCoreInfoStruct
+
+data PwProxyEventsStruct
+data PwLinkEventsStruct
+data PwLinkInfoStruct
 
 pwContext :: Context
 pwContext =
@@ -27,5 +32,9 @@ pwContext =
                 , (Struct "pw_registry_events", [t|PwRegistryEventsStruct|])
                 , (Struct "pw_core_info", [t|PwCoreInfoStruct|])
                 , (Struct "pw_core_events", [t|PwCoreEventsStruct|])
+                , (Struct "pw_link_info", [t|PwLinkInfoStruct|])
+                , (Struct "pw_link_events", [t|PwLinkEventsStruct|])
+                , (Struct "pw_proxy_events", [t|PwLinkEventsStruct|])
+                , (Struct "pw_proxy", [t|PwProxyStruct|])
                 ]
         }

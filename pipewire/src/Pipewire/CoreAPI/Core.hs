@@ -5,12 +5,15 @@ import Foreign (allocaBytes, freeHaskellFunPtr)
 import Language.C.Inline qualified as C
 
 import Pipewire.CoreAPI.CContext
+import Pipewire.CoreAPI.Proxy
 import Pipewire.Internal
 import Pipewire.Protocol
 import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..))
+import Pipewire.Utilities.CContext qualified as Utils
+import Pipewire.Utilities.Properties (PwProperties (..))
 
-C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)
+C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext <> Utils.pwContext)
 
 C.include "<pipewire/core.h>"
 
@@ -71,8 +74,25 @@ pw_id_core = PwID $ fromIntegral [C.pure| int{PW_ID_CORE} |]
 
 pw_core_disconnect :: PwCore -> IO ()
 pw_core_disconnect (PwCore core) =
-    [C.exp| void{pw_core_disconnect($(struct pw_core* core))} |]
+    [C.block| void{
+            struct pw_core* core = $(struct pw_core* core);
+            if (core) pw_core_disconnect(core);
+    } |]
 
 pw_core_get_registry :: PwCore -> IO PwRegistry
 pw_core_get_registry (PwCore core) =
     PwRegistry <$> [C.exp| struct pw_registry*{pw_core_get_registry($(struct pw_core* core), PW_VERSION_REGISTRY, 0)} |]
+
+pw_core_create_object :: PwCore -> Text -> Text -> PwVersion -> PwProperties -> IO PwProxy
+pw_core_create_object (PwCore core) factoryName typeName (PwVersion (fromIntegral -> version)) (PwProperties props) =
+    withCString factoryName \cFactoryName ->
+        withCString typeName \cType ->
+            PwProxy
+                <$> [C.exp| struct pw_proxy*{pw_core_create_object(
+                          $(struct pw_core* core),
+                          $(const char* cFactoryName),
+                          $(const char* cType),
+                          $(int version),
+                          &$(const struct pw_properties* props)->dict,
+                          0
+                    )} |]
