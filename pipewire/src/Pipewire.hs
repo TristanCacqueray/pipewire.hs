@@ -8,6 +8,7 @@ module Pipewire (
     CoreError (..),
     syncState,
     syncState_,
+    readState,
 
     -- * Mid level bracket API
     withPipewire,
@@ -74,7 +75,7 @@ where
 import Control.Exception (bracket, bracket_)
 import Language.C.Inline qualified as C
 
-import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, withMVar)
+import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, threadDelay, withMVar)
 import Control.Monad (void, when)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (NonEmpty)
@@ -148,7 +149,8 @@ runInstance pwInstance = do
     void $ pw_main_loop_run pwInstance.mainLoop
     pure Nothing
 
--- getErrors pwInstance
+readState :: PwInstance state -> IO state
+readState pwInstance = readMVar pwInstance.stateVar
 
 -- | Terminate the main loop, to be called from handlers.
 quitInstance :: PwInstance state -> IO ()
@@ -216,7 +218,9 @@ waitForLink pwLink pwInstance = do
                 Right PW_LINK_STATE_ACTIVE -> do
                     putStrLn "Link is active, quiting the loop!"
                     quitInstance pwInstance
-                Right x -> putStrLn $ show pwid <> ": " <> show x
+                Right x -> do
+                    putStrLn $ "Link state pwid " <> show pwid <> ": " <> show x
+                    quitInstance pwInstance
         with_pw_link_events pwLink handler do
-            putStrLn "Waiting..."
+            putStrLn "Waiting for link..."
             runInstance pwInstance

@@ -7,8 +7,10 @@ import Data.Vector.Storable qualified as VS
 import Foreign (Storable (..), allocaBytes, castPtr, freeHaskellFunPtr)
 
 import Pipewire.CoreAPI.CContext
+import Pipewire.CoreAPI.Core (PwCore (..))
 import Pipewire.CoreAPI.Loop (PwLoop (..))
 import Pipewire.Internal
+import Pipewire.Protocol
 import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.Utilities.CContext qualified as Utils
 import Pipewire.Utilities.Properties (PwProperties (..))
@@ -28,10 +30,14 @@ C.include "<spa/param/audio/format-utils.h>"
 
 type OnProcessHandler = PwStream -> IO ()
 
+withStreamEvents :: (PwStreamEvents -> IO a) -> IO a
+withStreamEvents cb =
+    allocaBytes (fromIntegral [C.pure| size_t {sizeof (struct pw_stream_events)} |]) (cb . PwStreamEvents)
+
 withAudioStream :: PwLoop -> OnProcessHandler -> (PwStream -> IO a) -> IO a
 withAudioStream pwLoop onProcess cb = do
     allocaBytes (fromIntegral [C.pure| size_t {sizeof (struct pw_stream**)} |]) \(streamData :: Ptr ()) -> do
-        allocaBytes (fromIntegral [C.pure| size_t {sizeof (struct pw_stream_events)} |]) \(streamEvents :: Ptr PwStreamEventsStruct) -> do
+        withStreamEvents \(PwStreamEvents streamEvents) -> do
             onProcessP <- $(C.mkFunPtr [t|Ptr () -> IO ()|]) onProcessWrapper
             -- setup pw_stream_events
             [C.block| void{
@@ -121,6 +127,17 @@ pw_stream_new_simple (PwLoop pwLoop) name (PwProperties props) (PwStreamEvents p
                        $(void* dataPtr))
                }|]
 
+pw_stream_new :: PwCore -> Text -> PwProperties -> IO PwStream
+pw_stream_new (PwCore pwCore) name (PwProperties props) =
+    withCString name \nameC ->
+        PwStream
+            <$> [C.exp| struct pw_stream*{
+                   pw_stream_new(
+                     $(struct pw_core* pwCore),
+                     $(const char* nameC),
+                     $(struct pw_properties* props)
+                 )}|]
+
 pw_stream_connect :: PwStream -> IO ()
 pw_stream_connect (PwStream _pwStream) = pure ()
 
@@ -135,3 +152,11 @@ pw_stream_dequeue_bufer (PwStream pwStream) =
 pw_stream_queue_buffer :: PwStream -> PwBuffer -> IO ()
 pw_stream_queue_buffer (PwStream pwStream) (PwBuffer pwBuffer) =
     [C.exp| void{pw_stream_queue_buffer($(struct pw_stream* pwStream), $(struct pw_buffer* pwBuffer))} |]
+
+pw_stream_trigger_process :: PwStream -> IO ()
+pw_stream_trigger_process (PwStream pwStream) =
+    [C.exp| void{pw_stream_trigger_process($(struct pw_stream* pwStream))} |]
+
+pw_stream_get_node_id :: PwStream -> IO PwID
+pw_stream_get_node_id (PwStream pwStream) =
+    PwID . fromIntegral <$> [C.exp| int{pw_stream_get_node_id($(struct pw_stream* pwStream))} |]

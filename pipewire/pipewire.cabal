@@ -59,11 +59,14 @@ library
     Pipewire.Protocol
     Pipewire.SPA.Buffers
     Pipewire.SPA.CContext
+    Pipewire.SPA.POD
+    Pipewire.SPA.Parameters
     Pipewire.SPA.Utilities.Dictionary
     Pipewire.SPA.Utilities.Hooks
     Pipewire.Stream
     Pipewire.Utilities.CContext
     Pipewire.Utilities.Properties
+    Pipewire.Video
 
   pkgconfig-depends: libpipewire-0.3
   build-depends:
@@ -123,3 +126,7 @@ executable hs-pw-mon
 executable hs-pw-link
   import: examples
   main-is: PwLink.hs
+
+executable video-src
+  import: examples
+  main-is: VideoSrc.hs

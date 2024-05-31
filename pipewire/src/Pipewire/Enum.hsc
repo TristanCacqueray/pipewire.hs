@@ -42,3 +42,15 @@ mPW_VERSION_CLIENT_EVENTS = PwVersion (#const PW_VERSION_CLIENT_EVENTS)
 
 mPW_VERSION_CLIENT_METHODS :: PwVersion
 mPW_VERSION_CLIENT_METHODS = PwVersion (#const PW_VERSION_CLIENT_METHODS)
+
+newtype PwStreamState = PwStreamState CInt
+  deriving newtype (Storable, Show)
+  deriving stock (Eq)
+
+#include <pipewire/stream.h>
+-- /* awk '/\tPW_STREAM_STATE/ { print "pattern " $1 " = PwStreamState (#const " $1 ") :: PwStreamState" }' pipewire/*.h */
+pattern PW_STREAM_STATE_ERROR = PwStreamState (#const PW_STREAM_STATE_ERROR) :: PwStreamState
+pattern PW_STREAM_STATE_UNCONNECTED = PwStreamState (#const PW_STREAM_STATE_UNCONNECTED) :: PwStreamState
+pattern PW_STREAM_STATE_CONNECTING = PwStreamState (#const PW_STREAM_STATE_CONNECTING) :: PwStreamState
+pattern PW_STREAM_STATE_PAUSED = PwStreamState (#const PW_STREAM_STATE_PAUSED) :: PwStreamState
+pattern PW_STREAM_STATE_STREAMING = PwStreamState (#const PW_STREAM_STATE_STREAMING) :: PwStreamState

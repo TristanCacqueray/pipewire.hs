@@ -1,6 +1,7 @@
 module Pipewire.CoreAPI.Loop where
 
 import Control.Exception (finally)
+import Data.Word
 import Foreign.Ptr (freeHaskellFunPtr)
 import Language.C.Inline qualified as C
 import System.Posix.Signals (Signal)
@@ -24,3 +25,22 @@ pw_loop_add_signal (PwLoop pwLoop) signal handler cb = do
         `finally` freeHaskellFunPtr handlerP
   where
     handlerWrapper _data = handler
+
+type TimerHandler = Word64 -> IO ()
+
+newtype SpaSource = SpaSource (Ptr SpaSourceStruct)
+
+pw_loop_add_timer :: PwLoop -> TimerHandler -> (SpaSource -> IO a) -> IO a
+pw_loop_add_timer (PwLoop pwLoop) handler cb = do
+    handlerP <- $(C.mkFunPtr [t|Ptr () -> Word64 -> IO ()|]) handlerWrapper
+    timer <-
+        SpaSource
+            <$> [C.exp| struct spa_source*{pw_loop_add_timer(
+                    $(struct pw_loop* pwLoop),
+                    $(void (*handlerP)(void*,uint64_t)),
+                    NULL
+              )} |]
+    cb timer `finally` do
+        freeHaskellFunPtr handlerP
+  where
+    handlerWrapper _userData = handler
