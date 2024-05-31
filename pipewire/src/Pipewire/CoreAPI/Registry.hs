@@ -8,7 +8,7 @@ import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Core (PwRegistry (..))
 import Pipewire.Internal
 import Pipewire.Protocol
-import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
+import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Dictionary (SpaDict (..))
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..))
 

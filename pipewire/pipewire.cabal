@@ -56,9 +56,11 @@ library
     Pipewire.IDMap
     Pipewire.Internal
     Pipewire.Protocol
-    Pipewire.SPA.Utilities.CContext
+    Pipewire.SPA.Buffers
+    Pipewire.SPA.CContext
     Pipewire.SPA.Utilities.Dictionary
     Pipewire.SPA.Utilities.Hooks
+    Pipewire.Stream
     Pipewire.Utilities.CContext
     Pipewire.Utilities.Properties
 
@@ -93,6 +95,7 @@ common examples
     build-depends:
       pipewire,
       text,
+      vector,
   else
     buildable: False
 
@@ -107,6 +110,10 @@ executable tutorial2
 executable tutorial3
   import: examples
   main-is: Tutorial3.hs
+
+executable tutorial4
+  import: examples
+  main-is: Tutorial4.hs
 
 executable hs-pw-link
   import: examples

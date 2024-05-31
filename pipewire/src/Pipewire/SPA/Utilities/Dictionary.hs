@@ -7,7 +7,7 @@ import Language.C.Inline qualified as C
 
 import Foreign (allocaBytes)
 import Pipewire.Internal
-import Pipewire.SPA.Utilities.CContext
+import Pipewire.SPA.CContext
 
 newtype SpaDict = SpaDict (Ptr SpaDictStruct)
 

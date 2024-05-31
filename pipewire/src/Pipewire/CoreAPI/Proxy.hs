@@ -6,7 +6,7 @@ import Language.C.Inline qualified as C
 
 import Pipewire.CoreAPI.CContext
 import Pipewire.Internal
-import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
+import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), with_spa_hook)
 
 C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)

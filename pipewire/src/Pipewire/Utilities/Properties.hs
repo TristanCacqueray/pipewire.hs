@@ -4,7 +4,7 @@ import Language.C.Inline qualified as C
 
 import Pipewire.Internal
 import Pipewire.Protocol (PwID (..))
-import Pipewire.SPA.Utilities.CContext qualified as SPA
+import Pipewire.SPA.CContext qualified as SPA
 import Pipewire.SPA.Utilities.Dictionary (SpaDict (..))
 import Pipewire.Utilities.CContext
 

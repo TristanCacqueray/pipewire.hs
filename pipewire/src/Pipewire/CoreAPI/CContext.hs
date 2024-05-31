@@ -19,6 +19,10 @@ data PwProxyEventsStruct
 data PwLinkEventsStruct
 data PwLinkInfoStruct
 
+data PwStreamStruct
+data PwStreamEventsStruct
+data PwBufferStruct
+
 pwContext :: Context
 pwContext =
     mempty
@@ -36,5 +40,8 @@ pwContext =
                 , (Struct "pw_link_events", [t|PwLinkEventsStruct|])
                 , (Struct "pw_proxy_events", [t|PwLinkEventsStruct|])
                 , (Struct "pw_proxy", [t|PwProxyStruct|])
+                , (Struct "pw_stream", [t|PwStreamStruct|])
+                , (Struct "pw_stream_events", [t|PwStreamEventsStruct|])
+                , (Struct "pw_buffer", [t|PwBufferStruct|])
                 ]
         }

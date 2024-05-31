@@ -10,7 +10,7 @@ import Pipewire.CoreAPI.Proxy
 import Pipewire.Enum
 import Pipewire.Internal
 import Pipewire.Protocol (PwID (..))
-import Pipewire.SPA.Utilities.CContext qualified as SPAUtils
+import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), with_spa_hook)
 import Pipewire.Utilities.Properties (PwProperties)
 
