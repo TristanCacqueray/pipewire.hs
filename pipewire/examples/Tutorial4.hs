@@ -1,8 +1,8 @@
 -- | Playing A Tone - https://docs.pipewire.org/tutorial4_8c-example.html
 module Main (main) where
 
-import Data.Vector.Storable qualified as VS
 import Data.IORef
+import Data.Vector.Storable qualified as VS
 
 import Pipewire qualified as PW
 import Pipewire.Stream qualified as PW
@@ -36,7 +36,7 @@ main = PW.withPipewire $ PW.withMainLoop \mainLoop -> do
 
         -- Generate and write new samples
         PW.writeAudioFrame buffer $ VS.generate frames \pos ->
-          volume * cos (accumulator + sampleX (fromIntegral pos))
+            volume * cos (accumulator + sampleX (fromIntegral pos))
 
         -- Update the accumulated value
         writeIORef accumulatorRef $ (accumulator + sampleX (fromIntegral frames))

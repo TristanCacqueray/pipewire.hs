@@ -2,8 +2,11 @@ module Pipewire.CoreAPI.MainLoop where
 
 import Language.C.Inline qualified as C
 
+import Control.Exception (finally)
+import Control.Monad (void)
+import Foreign (freeHaskellFunPtr)
 import Pipewire.CoreAPI.CContext
-import Pipewire.CoreAPI.Loop (PwLoop (..))
+import Pipewire.CoreAPI.Loop (PwLoop (..), SignalHandlerRaw)
 import Pipewire.Internal
 
 newtype PwContext = PwContext (Ptr PwContextStruct)
@@ -31,3 +34,19 @@ pw_main_loop_run (PwMainLoop mainLoop) =
 pw_main_loop_quit :: PwMainLoop -> IO CInt
 pw_main_loop_quit (PwMainLoop mainLoop) =
     [C.exp| int{pw_main_loop_quit($(struct pw_main_loop* mainLoop))} |]
+
+-- | Stop the loop on SIGINT or SIGKILL
+withSignalsHandler :: PwMainLoop -> IO a -> IO a
+withSignalsHandler (PwMainLoop mainLoop) cb = do
+    handlerP <- $(C.mkFunPtr [t|SignalHandlerRaw|]) handlerWrapper
+    [C.block| void{
+        struct pw_loop* loop = pw_main_loop_get_loop($(struct pw_main_loop* mainLoop));
+        pw_loop_add_signal(loop, SIGINT, $(void (*handlerP)(void*, int sig)), NULL);
+        pw_loop_add_signal(loop, SIGTERM, $(void (*handlerP)(void*, int sig)), NULL);
+    }|]
+    cb
+        `finally`
+        -- TODO: remove the signal handlers?
+        freeHaskellFunPtr handlerP
+  where
+    handlerWrapper _data _sig = void $ pw_main_loop_quit (PwMainLoop mainLoop)

@@ -81,7 +81,7 @@ import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, Pw
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
 import Pipewire.CoreAPI.Link (LinkState, PwLink (..), pw_link_create, with_pw_link_events)
 import Pipewire.CoreAPI.Loop (PwLoop)
-import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run)
+import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
 import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_destroy, with_pw_proxy_events)
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, with_pw_registry_events)
 import Pipewire.Enum
@@ -96,8 +96,11 @@ C.include "<pipewire/pipewire.h>"
 withPipewire :: IO a -> IO a
 withPipewire = bracket_ pw_init pw_deinit
 
+-- | Setup a main loop with signal handlers
 withMainLoop :: (PwMainLoop -> IO a) -> IO a
-withMainLoop = bracket pw_main_loop_new pw_main_loop_destroy
+withMainLoop cb = bracket pw_main_loop_new pw_main_loop_destroy withHandler
+  where
+    withHandler mainLoop = withSignalsHandler mainLoop (cb mainLoop)
 
 withContext :: PwLoop -> (PwContext -> IO a) -> IO a
 withContext loop = bracket (pw_context_new loop) pw_context_destroy
