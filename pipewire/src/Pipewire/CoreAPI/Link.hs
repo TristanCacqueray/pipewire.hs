@@ -1,6 +1,7 @@
 module Pipewire.CoreAPI.Link where
 
 import Control.Exception (finally)
+import Control.Monad (when)
 import Foreign (allocaBytes, freeHaskellFunPtr)
 import Language.C.Inline qualified as C
 
@@ -12,13 +13,39 @@ import Pipewire.Internal
 import Pipewire.Protocol (PwID (..))
 import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), with_spa_hook)
-import Pipewire.Utilities.Properties (PwProperties)
+import Pipewire.Utilities.Properties (PwProperties, pw_properties_new, pw_properties_set_id, pw_properties_set_linger)
 
 C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)
 
 C.include "<pipewire/link.h>"
 
 newtype PwLink = PwLink {getProxy :: PwProxy}
+
+data LinkProperties = LinkProperties
+    { portOutput :: PwID
+    , portInput :: PwID
+    , linger :: Bool
+    -- ^ Set to True to keep the link after the program quit
+    }
+
+withLink :: PwCore -> LinkProperties -> (PwLink -> IO a) -> IO a
+withLink core linkProperties cb = do
+    -- Setup the link properties
+    props <- pw_properties_new
+    pw_properties_set_id props "link.output.port" linkProperties.portOutput
+    pw_properties_set_id props "link.input.port" linkProperties.portInput
+    when linkProperties.linger do
+        -- Keep the link after the program quit
+        pw_properties_set_linger props
+
+    -- Create the link proxy
+    pwLink <- pw_link_create core props
+    cb pwLink
+        `finally`
+        -- Cleanup the proxy
+        -- That does not seem necessary as the pw_core_disconnect takes care of that,
+        -- but that's what the pw-link.c is doing.
+        pw_proxy_destroy pwLink.getProxy
 
 pw_link_create :: PwCore -> PwProperties -> IO PwLink
 pw_link_create core props =

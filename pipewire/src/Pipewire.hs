@@ -36,6 +36,7 @@ module Pipewire (
 
     -- ** Link
     module Pipewire.CoreAPI.Link,
+    waitForLink,
 
     -- ** Loop
     module Pipewire.CoreAPI.Loop,
@@ -61,6 +62,9 @@ module Pipewire (
     -- *** Hooks
     module Pipewire.SPA.Utilities.Hooks,
 
+    -- * SPA
+    module Pipewire.Stream,
+
     -- * Helpers
     getHeadersVersion,
     getLibraryVersion,
@@ -79,7 +83,7 @@ import Pipewire.Constants
 import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
 import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, PwRegistry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, with_pw_core_events)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
-import Pipewire.CoreAPI.Link (LinkState, PwLink (..), pw_link_create, with_pw_link_events)
+import Pipewire.CoreAPI.Link (LinkProperties (..), LinkState, PwLink (..), pw_link_create, withLink, with_pw_link_events)
 import Pipewire.CoreAPI.Loop (PwLoop)
 import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
 import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_destroy, with_pw_proxy_events)
@@ -89,6 +93,7 @@ import Pipewire.Internal
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
 import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, with_spa_dict)
 import Pipewire.SPA.Utilities.Hooks (SpaHook, with_spa_hook)
+import Pipewire.Stream (pw_stream_get_node_id)
 import Pipewire.Utilities.Properties (PwProperties, pw_properties_get, pw_properties_new, pw_properties_new_dict, pw_properties_set, pw_properties_set_id, pw_properties_set_linger)
 
 C.include "<pipewire/pipewire.h>"
@@ -198,3 +203,20 @@ withInstance initialState updateState cb =
         pending <- readIORef sync
         when (pending == seqid) do
             void $ pw_main_loop_quit mainLoop
+
+waitForLink :: PwLink -> PwInstance state -> IO (Maybe (NonEmpty CoreError))
+waitForLink pwLink pwInstance = do
+    let abort msg = putStrLn msg >> quitInstance pwInstance
+        destroyHandler = abort "Destroyed!"
+        removedHandler = abort "Proxy Removed!"
+        errorHandler res err = abort $ "error: " <> show res <> " " <> show err
+    with_pw_proxy_events pwLink.getProxy destroyHandler removedHandler errorHandler do
+        let handler pwid state = case state of
+                Left err -> abort $ "Link state failed: " <> show err
+                Right PW_LINK_STATE_ACTIVE -> do
+                    putStrLn "Link is active, quiting the loop!"
+                    quitInstance pwInstance
+                Right x -> putStrLn $ show pwid <> ": " <> show x
+        with_pw_link_events pwLink handler do
+            putStrLn "Waiting..."
+            runInstance pwInstance

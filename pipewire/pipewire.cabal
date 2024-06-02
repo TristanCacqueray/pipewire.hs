@@ -54,6 +54,7 @@ library
     Pipewire.CoreAPI.Registry
     Pipewire.Enum
     Pipewire.IDMap
+    Pipewire.Instance
     Pipewire.Internal
     Pipewire.Protocol
     Pipewire.SPA.Buffers
