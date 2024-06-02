@@ -2,7 +2,7 @@ module Pipewire.Utilities.Properties where
 
 import Language.C.Inline qualified as C
 
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..))
 import Pipewire.SPA.CContext qualified as SPA
 import Pipewire.SPA.Utilities.Dictionary (SpaDict (..))

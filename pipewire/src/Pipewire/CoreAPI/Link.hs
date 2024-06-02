@@ -1,15 +1,13 @@
 module Pipewire.CoreAPI.Link where
 
-import Control.Exception (finally)
-import Control.Monad (when)
-import Foreign (allocaBytes, freeHaskellFunPtr)
+import Foreign (castPtr)
 import Language.C.Inline qualified as C
 
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Core
 import Pipewire.CoreAPI.Proxy
 import Pipewire.Enum
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..))
 import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), with_spa_hook)

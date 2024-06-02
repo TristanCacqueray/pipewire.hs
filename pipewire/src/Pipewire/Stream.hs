@@ -2,14 +2,13 @@ module Pipewire.Stream where
 
 import Language.C.Inline qualified as C
 
-import Control.Exception (finally)
 import Data.Vector.Storable qualified as VS
-import Foreign (Storable (..), allocaBytes, castPtr, freeHaskellFunPtr)
+import Foreign (Storable (..), castPtr)
 
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Core (PwCore (..))
 import Pipewire.CoreAPI.Loop (PwLoop (..))
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.Protocol
 import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.Utilities.CContext qualified as Utils

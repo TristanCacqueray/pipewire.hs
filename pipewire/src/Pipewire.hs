@@ -75,8 +75,7 @@ where
 import Control.Exception (bracket, bracket_)
 import Language.C.Inline qualified as C
 
-import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, threadDelay, withMVar)
-import Control.Monad (void, when)
+import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, withMVar)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -90,7 +89,7 @@ import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop
 import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_destroy, with_pw_proxy_events)
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, with_pw_registry_events)
 import Pipewire.Enum
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
 import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, with_spa_dict)
 import Pipewire.SPA.Utilities.Hooks (SpaHook, with_spa_hook)

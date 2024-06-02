@@ -5,7 +5,7 @@ import Language.C.Inline qualified as C
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Core (PwCore (..))
 import Pipewire.CoreAPI.Loop (PwLoop (..))
-import Pipewire.Internal
+import Pipewire.Prelude
 
 newtype PwContext = PwContext (Ptr PwContextStruct)
 

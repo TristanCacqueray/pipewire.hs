@@ -2,8 +2,7 @@ module Pipewire.SPA.Parameters where
 
 import Language.C.Inline qualified as C
 
-import Foreign (allocaBytes)
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.SPA.CContext
 
 C.context (C.baseCtx <> pwContext)

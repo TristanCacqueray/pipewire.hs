@@ -4,17 +4,15 @@ SPDX-License-Identifier: MIT
 -}
 module Pipewire.Video where
 
+import Foreign (castPtr)
 import Language.C.Inline qualified as C
-
-import Control.Exception (finally)
-import Foreign (FunPtr, alloca, castPtr, freeHaskellFunPtr)
 
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Core (PwCore)
 import Pipewire.CoreAPI.Loop (SpaSource (..), pw_loop_add_timer)
 import Pipewire.CoreAPI.MainLoop (PwMainLoop (..), pw_main_loop_get_loop)
 import Pipewire.Enum
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.SPA.CContext (SpaPodStruct)
 import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.POD (SpaPod (..))

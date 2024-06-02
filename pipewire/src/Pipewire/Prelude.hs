@@ -1,27 +1,30 @@
 -- | Helper functions and re-export
-module Pipewire.Internal (
+module Pipewire.Prelude (
     peekCString,
 
     -- * Base
-    Word32,
+    module Data.Word,
+    module Control.Exception,
+    module Control.Monad,
 
     -- * Foreign
-    CInt,
-    CString,
-    Ptr,
-    nullPtr,
+    module Foreign,
+    module Foreign.C.Types,
+    module Foreign.C.String,
 
     -- * text
     Text,
     withCString,
 ) where
 
+import Control.Exception (finally)
+import Control.Monad (unless, void, when)
 import Data.ByteString.Unsafe (unsafePackCString)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Foreign (withCString)
-import Data.Word (Word32)
-import Foreign (Ptr, nullPtr)
+import Data.Word
+import Foreign (FunPtr, Ptr, alloca, allocaBytes, freeHaskellFunPtr, nullPtr)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CInt)
 

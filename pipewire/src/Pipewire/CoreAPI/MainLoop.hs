@@ -2,12 +2,9 @@ module Pipewire.CoreAPI.MainLoop where
 
 import Language.C.Inline qualified as C
 
-import Control.Exception (finally)
-import Control.Monad (void)
-import Foreign (freeHaskellFunPtr)
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Loop (PwLoop (..), SignalHandlerRaw)
-import Pipewire.Internal
+import Pipewire.Prelude
 
 newtype PwContext = PwContext (Ptr PwContextStruct)
 

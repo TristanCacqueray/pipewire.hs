@@ -55,7 +55,7 @@ library
     Pipewire.Enum
     Pipewire.IDMap
     Pipewire.Instance
-    Pipewire.Internal
+    Pipewire.Prelude
     Pipewire.Protocol
     Pipewire.SPA.Buffers
     Pipewire.SPA.CContext

@@ -5,8 +5,7 @@ import Data.Vector qualified as V
 import Data.Vector.Storable.Mutable qualified as VM
 import Language.C.Inline qualified as C
 
-import Foreign (allocaBytes)
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.SPA.CContext
 
 newtype SpaDict = SpaDict (Ptr SpaDictStruct)

@@ -1,13 +1,10 @@
 module Pipewire.CoreAPI.Loop where
 
-import Control.Exception (finally)
-import Data.Word
-import Foreign.Ptr (freeHaskellFunPtr)
 import Language.C.Inline qualified as C
 import System.Posix.Signals (Signal)
 
 import Pipewire.CoreAPI.CContext
-import Pipewire.Internal
+import Pipewire.Prelude
 
 C.context (C.baseCtx <> pwContext)
 

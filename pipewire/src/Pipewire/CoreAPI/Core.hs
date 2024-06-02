@@ -1,12 +1,10 @@
 module Pipewire.CoreAPI.Core where
 
-import Control.Exception (finally)
-import Foreign (allocaBytes, freeHaskellFunPtr)
 import Language.C.Inline qualified as C
 
 import Pipewire.CoreAPI.CContext
 import Pipewire.CoreAPI.Proxy
-import Pipewire.Internal
+import Pipewire.Prelude
 import Pipewire.Protocol
 import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..))
