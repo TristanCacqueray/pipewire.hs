@@ -115,6 +115,10 @@ executable tutorial4
   import: examples
   main-is: Tutorial4.hs
 
+executable hs-pw-mon
+  import: examples
+  main-is: PwMon.hs
+
 executable hs-pw-link
   import: examples
   main-is: PwLink.hs
