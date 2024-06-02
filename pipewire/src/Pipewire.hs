@@ -81,18 +81,18 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Pipewire.Constants
 import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
-import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, PwRegistry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, with_pw_core_events)
+import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, PwRegistry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, withCoreEvents)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
-import Pipewire.CoreAPI.Link (LinkProperties (..), LinkState, PwLink (..), newLinkProperties, pwLinkEventsFuncs, pw_link_create, withLink, withPwLinkEvents, with_pw_link_events)
+import Pipewire.CoreAPI.Link (LinkProperties (..), LinkState, PwLink (..), newLinkProperties, pwLinkEventsFuncs, pw_link_create, withLink, withPwLinkEvents)
 import Pipewire.CoreAPI.Loop (PwLoop)
 import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
-import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_add_object_listener, pw_proxy_destroy, with_pw_proxy_events)
-import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, with_pw_registry_events)
+import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_add_object_listener, pw_proxy_destroy, withProxyEvents)
+import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, withRegistryEvents)
 import Pipewire.Enum
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
-import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, with_spa_dict)
-import Pipewire.SPA.Utilities.Hooks (SpaHook, with_spa_hook)
+import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, withSpaDict)
+import Pipewire.SPA.Utilities.Hooks (SpaHook, withSpaHook)
 import Pipewire.Stream (pw_stream_get_node_id)
 import Pipewire.Utilities.Properties (PwProperties, pw_properties_get, pw_properties_new, pw_properties_new_dict, pw_properties_set, pw_properties_set_id, pw_properties_set_linger)
 
@@ -119,7 +119,7 @@ getHeadersVersion = ([C.exp| const char*{pw_get_headers_version()} |] :: IO CStr
 getLibraryVersion :: IO Text
 getLibraryVersion = ([C.exp| const char*{pw_get_library_version()} |] :: IO CString) >>= peekCString
 
--- | A pipewire instance
+-- | A pipewire client instance
 data PwInstance state = PwInstance
     { stateVar :: MVar state
     , mainLoop :: PwMainLoop
@@ -146,7 +146,7 @@ data RegistryEvent = Added PwID Text SpaDict | Removed PwID
 runInstance :: PwInstance state -> IO (Maybe (NonEmpty CoreError))
 runInstance pwInstance = do
     void $ pw_main_loop_run pwInstance.mainLoop
-    pure Nothing
+    getErrors pwInstance
 
 readState :: PwInstance state -> IO state
 readState pwInstance = readMVar pwInstance.stateVar
@@ -155,7 +155,9 @@ readState pwInstance = readMVar pwInstance.stateVar
 quitInstance :: PwInstance state -> IO ()
 quitInstance pwInstance = void $ pw_main_loop_quit pwInstance.mainLoop
 
--- | Like 'syncState' but throwing an error if there was any pipewire error.
+{- | Like 'syncState' but throwing an error if there was any pipewire error.
+Do not call from a handler!
+-}
 syncState_ :: PwInstance state -> (state -> IO a) -> IO a
 syncState_ pwInstance cb = syncState pwInstance \case
     Left errs -> mapM_ print errs >> error "pw core failed"
@@ -164,7 +166,9 @@ syncState_ pwInstance cb = syncState pwInstance \case
 getErrors :: PwInstance state -> IO (Maybe (NonEmpty CoreError))
 getErrors pwInstance = NE.nonEmpty <$> readMVar pwInstance.errorsVar
 
--- | Ensure all the events have been processed and access the state.
+{- | Ensure all the events have been processed and access the state.
+Do not call from a handler!
+-}
 syncState :: PwInstance state -> (Either (NonEmpty CoreError) state -> IO a) -> IO a
 syncState pwInstance cb = do
     -- Write the expected SeqID so that the core handler stop the loop
@@ -186,14 +190,14 @@ withInstance initialState updateState cb =
                 withCore context \core -> do
                     sync <- newIORef (SeqID 0)
                     errorsVar <- newMVar []
-                    with_pw_core_events infoHandler (doneHandler mainLoop sync) (errorHandler errorsVar) \coreEvents -> do
-                        with_spa_hook \coreListener -> do
+                    withCoreEvents infoHandler (doneHandler mainLoop sync) (errorHandler errorsVar) \coreEvents -> do
+                        withSpaHook \coreListener -> do
                             pw_core_add_listener core coreListener coreEvents
-                            with_spa_hook \registryListener -> do
+                            withSpaHook \registryListener -> do
                                 stateVar <- newMVar initialState
                                 registry <- pw_core_get_registry core
                                 let pwInstance = PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
-                                with_pw_registry_events (handler pwInstance stateVar) (removeHandler pwInstance stateVar) \registryEvent -> do
+                                withRegistryEvents (handler pwInstance stateVar) (removeHandler pwInstance stateVar) \registryEvent -> do
                                     pw_registry_add_listener registry registryListener registryEvent
                                     cb pwInstance
   where
@@ -212,8 +216,8 @@ waitForLink pwLink pwInstance = do
         destroyHandler = abort "Destroyed!"
         removedHandler = abort "Proxy Removed!"
         errorHandler res err = abort $ "error: " <> show res <> " " <> show err
-    with_pw_proxy_events pwLink.getProxy destroyHandler removedHandler errorHandler do
-        let handler pwid state = case state of
+    withProxyEvents pwLink.getProxy destroyHandler removedHandler errorHandler do
+        let infoHandler pwid state = case state of
                 Left err -> abort $ "Link state failed: " <> show err
                 Right PW_LINK_STATE_ACTIVE -> do
                     putStrLn "Link is active, quiting the loop!"
@@ -221,6 +225,9 @@ waitForLink pwLink pwInstance = do
                 Right x -> do
                     putStrLn $ "Link state pwid " <> show pwid <> ": " <> show x
                     quitInstance pwInstance
-        with_pw_link_events pwLink handler do
-            putStrLn "Waiting for link..."
-            runInstance pwInstance
+
+        withSpaHook \spaHook ->
+            withPwLinkEvents infoHandler \ple -> do
+                pw_proxy_add_object_listener pwLink.getProxy spaHook (pwLinkEventsFuncs ple)
+                putStrLn "Waiting for link..."
+                runInstance pwInstance

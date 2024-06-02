@@ -1,20 +1,28 @@
 # pipewire.hs
 
-> [Pipewire](https://pipewire.org) is a project that aims to greatly improve handling of audio and video under Linux. It provides a low-latency, graph-based processing engine on top of audio and video devices that can be used to support the use cases currently handled by both PulseAudio and JACK.
+> [Pipewire](https://pipewire.org) is a project that aims to greatly improve handling of audio and video under Linux.
+> It provides a low-latency, graph-based processing engine on top of audio and video devices that can be used to support the use cases currently handled by both PulseAudio and JACK.
 
 This project contains Haskell bindings to the libpipewire.
 This allows you to leverage the multimedia framework directly from your Haskell program.
 
 ## Project Status
 
-The library features a high level binding to integrate `pw-mon` and `pw-link` for the pw-controller project described below.
+The library features high level binding to implement the following pipewire examples:
+
+- `pw-link` to list/create/delete links: [PwLink.hs](./pipewire/examples/PwLink.hs)
+- `tutorial4` to play a tone: [Tutorial4.hs](./pipewire/examples/Tutorial4.hs)
+- `video-src` to draw a video stream: [VideoSrc.hs](./pipewire/examples/VideoSrc.hs)
+
+The binding is a proof of concept, only the necessary APIs from libpipewire is exposed.
+A tentative `Instance` abstraction is proposed to automatically manage the registry event.
+Though the main loop and callback management is still a work in progress.
+Checkout:
 
 - Documentation: <https://tristancacqueray.github.io/pipewire.hs/Pipewire.html>
 - Source entrypoint: [Pipewire.hs](./pipewire/src/Pipewire.hs)
-- PwLink demo: [PwLink.hs](./pipewire/examples/PwLink.hs)
 
-Audio and video source/sinks are not currently implemented.
-
+The initial goal was to support pw-controller:
 
 ## pw-controller - apply rules to pipewire links
 

@@ -31,8 +31,8 @@ type ErrorHandler = PwID -> SeqID -> Int -> Text -> IO ()
 type ErrorHandlerRaw = Ptr () -> Word32 -> CInt -> CInt -> CString -> IO ()
 
 -- | Create a local pw_core_events structure
-with_pw_core_events :: InfoHandler -> DoneHandler -> ErrorHandler -> (PwCoreEvents -> IO b) -> IO b
-with_pw_core_events infoHandler doneHandler errorHandler cb = allocaBytes
+withCoreEvents :: InfoHandler -> DoneHandler -> ErrorHandler -> (PwCoreEvents -> IO b) -> IO b
+withCoreEvents infoHandler doneHandler errorHandler cb = allocaBytes
     (fromIntegral size)
     \p -> do
         infoP <- $(C.mkFunPtr [t|InfoHandlerRaw|]) infoWrapper

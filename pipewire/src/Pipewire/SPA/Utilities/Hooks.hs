@@ -12,8 +12,8 @@ C.include "<spa/utils/hook.h>"
 newtype SpaHook = SpaHook (Ptr SpaHookStruct)
 
 -- | Create a local spa_hook structure
-with_spa_hook :: (SpaHook -> IO a) -> IO a
-with_spa_hook cb = allocaBytes
+withSpaHook :: (SpaHook -> IO a) -> IO a
+withSpaHook cb = allocaBytes
     (fromIntegral size)
     \p -> do
         -- Do we need to memset after allocaBytes ?

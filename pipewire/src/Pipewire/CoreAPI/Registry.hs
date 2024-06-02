@@ -23,8 +23,8 @@ type GlobalRemoveHandler = PwID -> IO ()
 type GlobalRemoveHandlerRaw = Ptr () -> Word32 -> IO ()
 
 -- | Create a local pw_registry_events structure
-with_pw_registry_events :: GlobalHandler -> GlobalRemoveHandler -> (PwRegistryEvents -> IO b) -> IO b
-with_pw_registry_events globalHandler globalRemoveHandler cb = allocaBytes
+withRegistryEvents :: GlobalHandler -> GlobalRemoveHandler -> (PwRegistryEvents -> IO b) -> IO b
+withRegistryEvents globalHandler globalRemoveHandler cb = allocaBytes
     (fromIntegral size)
     \p -> do
         globalP <- $(C.mkFunPtr [t|GlobalHandlerRaw|]) globalWrapper

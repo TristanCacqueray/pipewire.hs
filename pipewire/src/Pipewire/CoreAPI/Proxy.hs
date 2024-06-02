@@ -5,7 +5,7 @@ import Language.C.Inline qualified as C
 import Pipewire.CoreAPI.CContext
 import Pipewire.Prelude
 import Pipewire.SPA.CContext qualified as SPAUtils
-import Pipewire.SPA.Utilities.Hooks (SpaHook (..), with_spa_hook)
+import Pipewire.SPA.Utilities.Hooks (SpaHook (..), withSpaHook)
 
 C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)
 
@@ -21,9 +21,9 @@ pw_proxy_destroy :: PwProxy -> IO ()
 pw_proxy_destroy (PwProxy pwProxy) =
     [C.exp| void{pw_proxy_destroy($(struct pw_proxy* pwProxy))} |]
 
-with_pw_proxy_events :: PwProxy -> ProxyDestroyHandler -> ProxyRemovedHandler -> ProxyErrorHandler -> IO a -> IO a
-with_pw_proxy_events (PwProxy pwProxy) destroyHandler removedHandler errorHandler cb =
-    with_spa_hook \(SpaHook spaHook) -> allocaBytes
+withProxyEvents :: PwProxy -> ProxyDestroyHandler -> ProxyRemovedHandler -> ProxyErrorHandler -> IO a -> IO a
+withProxyEvents (PwProxy pwProxy) destroyHandler removedHandler errorHandler cb =
+    withSpaHook \(SpaHook spaHook) -> allocaBytes
         (fromIntegral [C.pure| size_t {sizeof (struct pw_proxy_events)} |])
         \p -> do
             destroyP <- $(C.mkFunPtr [t|Ptr () -> IO ()|]) (const destroyHandler)

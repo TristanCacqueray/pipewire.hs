@@ -6,3 +6,6 @@ ci:
 
 dev target:
   watchexec cabal build -O0 --flag=examples exe:{{target}}
+
+doc:
+  cabal haddock lib:pipewire

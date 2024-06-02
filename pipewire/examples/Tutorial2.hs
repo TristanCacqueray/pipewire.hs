@@ -16,8 +16,8 @@ main =
         registry <- PW.pw_core_get_registry core
 
         -- _stopAfterTimeout mainLoop
-        PW.with_spa_hook \registryListener -> do
-            PW.with_pw_registry_events handler removeHandler \registryEvent -> do
+        PW.withSpaHook \registryListener -> do
+            PW.withRegistryEvents handler removeHandler \registryEvent -> do
                 PW.pw_registry_add_listener registry registryListener registryEvent
                 print =<< PW.pw_main_loop_run mainLoop
                 putStrLn "Done!"

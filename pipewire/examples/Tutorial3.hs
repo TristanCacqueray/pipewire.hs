@@ -16,16 +16,16 @@ main =
   where
     go core mainLoop = do
         registry <- PW.pw_core_get_registry core
-        PW.with_spa_hook \registryListener -> do
-            PW.with_pw_registry_events handler removeHandler \registryEvent -> do
+        PW.withSpaHook \registryListener -> do
+            PW.withRegistryEvents handler removeHandler \registryEvent -> do
                 PW.pw_registry_add_listener registry registryListener registryEvent
                 roundtrip core mainLoop
                 putStrLn "Done!"
 
     roundtrip core mainLoop = do
         pendingRef <- newIORef (PW.SeqID 0)
-        PW.with_pw_core_events infoHandler (doneHandler mainLoop pendingRef) errorHandler \coreEvents -> do
-            PW.with_spa_hook \coreListener -> do
+        PW.withCoreEvents infoHandler (doneHandler mainLoop pendingRef) errorHandler \coreEvents -> do
+            PW.withSpaHook \coreListener -> do
                 PW.pw_core_add_listener core coreListener coreEvents
                 writeIORef pendingRef =<< PW.pw_core_sync core PW.pw_id_core
                 print =<< PW.pw_main_loop_run mainLoop

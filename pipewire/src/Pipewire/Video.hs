@@ -17,7 +17,7 @@ import Pipewire.SPA.CContext (SpaPodStruct)
 import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.POD (SpaPod (..))
 import Pipewire.SPA.Parameters
-import Pipewire.SPA.Utilities.Hooks (SpaHook (..), with_spa_hook)
+import Pipewire.SPA.Utilities.Hooks (SpaHook (..), withSpaHook)
 import Pipewire.Stream
 import Pipewire.Utilities.CContext qualified as Utils
 import Pipewire.Utilities.Properties (PwProperties (..))
@@ -208,7 +208,7 @@ onStreamStateChanged (PwMainLoop mainLoop) (SpaSource timer) (PwStream pwStream)
 
 withVideoHandlers :: PwMainLoop -> PwStream -> StateHandler -> DrawHandler -> (PwStream -> IO a) -> IO a
 withVideoHandlers pwMainLoop pwStream@(PwStream s) stateHandler draw cb =
-    with_spa_hook \(SpaHook spaHook) -> withStridePtr \stridePtr -> do
+    withSpaHook \(SpaHook spaHook) -> withStridePtr \stridePtr -> do
         loop <- pw_main_loop_get_loop pwMainLoop
         pw_loop_add_timer loop onTimeoutHandler \timer ->
             withSeqPtr \seqPtr -> withDoublePtr \cropPtr -> withDoublePtr \accPtr -> withSpaVideoInfoRaw \videoInfo -> do

@@ -72,8 +72,8 @@ spaDictRead (SpaDict spaDict) = do
     V.generateM propSize readCString
 
 -- | Create a local spa_hook structure
-with_spa_dict :: (SpaDict -> IO a) -> IO a
-with_spa_dict cb = allocaBytes
+withSpaDict :: (SpaDict -> IO a) -> IO a
+withSpaDict cb = allocaBytes
     (fromIntegral size)
     \p -> do
         -- Do we need to memset after allocaBytes ?
