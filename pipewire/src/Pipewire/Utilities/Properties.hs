@@ -20,6 +20,7 @@ pw_properties_set_linger :: PwProperties -> IO ()
 pw_properties_set_linger (PwProperties pwProperties) =
     [C.exp| void{pw_properties_set($(struct pw_properties* pwProperties), PW_KEY_OBJECT_LINGER, "true")}|]
 
+-- TODO: bind pw_properties_destroy and provide withProperties wrapper
 pw_properties_new :: IO PwProperties
 pw_properties_new =
     PwProperties <$> [C.exp| struct pw_properties*{pw_properties_new(NULL, NULL)} |]

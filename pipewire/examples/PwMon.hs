@@ -6,7 +6,7 @@ main :: IO ()
 main = PW.withInstance () printEvent \pwInstance -> do
     print =<< PW.pw_main_loop_run pwInstance.mainLoop
   where
-    printEvent ev _ = do
+    printEvent _ ev _ = do
         case ev of
             PW.Added pwid name props -> do
                 putStrLn $ "added: " <> show pwid

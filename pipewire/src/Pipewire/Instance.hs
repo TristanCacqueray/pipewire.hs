@@ -9,7 +9,7 @@ import Pipewire.IDMap (IDMap)
 import Pipewire.IDMap qualified as IDMap
 
 withLinkInstance :: (PW.PwInstance LinksRegistry -> IO a) -> IO a
-withLinkInstance = PW.withInstance initialLinksRegistry updateLinksRegistry
+withLinkInstance = PW.withInstance initialLinksRegistry (const updateLinksRegistry)
 
 -- | For pw-link, we are only interested in the ports and the links
 data LinksRegistry = LinksRegistry
@@ -27,6 +27,11 @@ getNodeOutputs pwid reg = IDMap.keep (\(Port _ nodeID) -> pwid == nodeID) reg.ou
 
 getNodeInputs :: PW.PwID -> LinksRegistry -> [(PW.PwID, Port)]
 getNodeInputs pwid reg = IDMap.keep (\(Port _ nodeID) -> pwid == nodeID) reg.inputs
+
+getLinkFrom :: PW.PwID -> LinksRegistry -> [(PW.PwID, PW.PwID)]
+getLinkFrom pwid reg =
+    map (\(linkid, (_out, inp)) -> (linkid, inp)) $
+        IDMap.keep (\(out, _inp) -> pwid == out) reg.links
 
 data Port = Port
     { alias :: Text
@@ -49,6 +54,7 @@ updateLinksRegistry ev reg = case ev of
                 <$> PW.spaDictLookup dict "port.alias"
                 <*> PW.spaDictLookupInt dict "node.id"
                 <*> PW.spaDictLookup dict "port.direction"
+        -- putStrLn $ "Adding a new port: " <> show newPort
         let insert name node = IDMap.insert pwid (Port name (PW.PwID node))
         case newPort of
             (Just name, Just node, Just "in") -> pure $ reg{inputs = insert name node reg.inputs}
@@ -77,6 +83,12 @@ data LinkResult
     | LinkMissmatched
     | LinkSuccess
     deriving (Show)
+
+getLinkablePorts :: PW.PwID -> PW.PwID -> LinksRegistry -> [(PW.PwID, PW.PwID)]
+getLinkablePorts source sink reg =
+    case (getNodeOutputs source reg, getNodeInputs sink reg) of
+        ([(out, _)], [(inp, _)]) -> [(out, inp)]
+        _ -> []
 
 linkNodes :: PW.PwID -> PW.PwID -> PW.PwInstance LinksRegistry -> IO LinkResult
 linkNodes source sink pwInstance =

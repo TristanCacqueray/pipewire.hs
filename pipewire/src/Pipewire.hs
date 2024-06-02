@@ -83,10 +83,10 @@ import Pipewire.Constants
 import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
 import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, PwRegistry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, with_pw_core_events)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
-import Pipewire.CoreAPI.Link (LinkProperties (..), LinkState, PwLink (..), pw_link_create, withLink, with_pw_link_events)
+import Pipewire.CoreAPI.Link (LinkProperties (..), LinkState, PwLink (..), newLinkProperties, pwLinkEventsFuncs, pw_link_create, withLink, withPwLinkEvents, with_pw_link_events)
 import Pipewire.CoreAPI.Loop (PwLoop)
 import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
-import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_destroy, with_pw_proxy_events)
+import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_add_object_listener, pw_proxy_destroy, with_pw_proxy_events)
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, with_pw_registry_events)
 import Pipewire.Enum
 import Pipewire.Prelude
@@ -177,7 +177,7 @@ syncState pwInstance cb = do
         Nothing -> withMVar pwInstance.stateVar (cb . Right)
 
 -- | Create a new 'PwInstance' by providing an initial state and a registry update handler.
-withInstance :: state -> (RegistryEvent -> state -> IO state) -> (PwInstance state -> IO a) -> IO a
+withInstance :: state -> (PwInstance state -> RegistryEvent -> state -> IO state) -> (PwInstance state -> IO a) -> IO a
 withInstance initialState updateState cb =
     withPipewire do
         withMainLoop $ \mainLoop -> do
@@ -191,13 +191,14 @@ withInstance initialState updateState cb =
                             pw_core_add_listener core coreListener coreEvents
                             with_spa_hook \registryListener -> do
                                 stateVar <- newMVar initialState
-                                with_pw_registry_events (handler stateVar) (removeHandler stateVar) \registryEvent -> do
-                                    registry <- pw_core_get_registry core
+                                registry <- pw_core_get_registry core
+                                let pwInstance = PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
+                                with_pw_registry_events (handler pwInstance stateVar) (removeHandler pwInstance stateVar) \registryEvent -> do
                                     pw_registry_add_listener registry registryListener registryEvent
-                                    cb PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
+                                    cb pwInstance
   where
-    handler stateVar pwid name _ props = modifyMVar_ stateVar (updateState $ Added pwid name props)
-    removeHandler stateVar pwid = modifyMVar_ stateVar (updateState $ Removed pwid)
+    handler pwInstance stateVar pwid name _ props = modifyMVar_ stateVar (updateState pwInstance $ Added pwid name props)
+    removeHandler pwInstance stateVar pwid = modifyMVar_ stateVar (updateState pwInstance $ Removed pwid)
     infoHandler _pwinfo = pure ()
     errorHandler errorVar pwid _seq' res msg = modifyMVar_ errorVar (\xs -> pure $ CoreError pwid res msg : xs)
     doneHandler mainLoop sync _pwid seqid = do

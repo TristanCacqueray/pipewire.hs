@@ -10,7 +10,7 @@ import Pipewire.Enum
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..))
 import Pipewire.SPA.CContext qualified as SPAUtils
-import Pipewire.SPA.Utilities.Hooks (SpaHook (..), with_spa_hook)
+import Pipewire.SPA.Utilities.Hooks (with_spa_hook)
 import Pipewire.Utilities.Properties (PwProperties, pw_properties_new, pw_properties_set_id, pw_properties_set_linger)
 
 C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)
@@ -29,13 +29,7 @@ data LinkProperties = LinkProperties
 withLink :: PwCore -> LinkProperties -> (PwLink -> IO a) -> IO a
 withLink core linkProperties cb = do
     -- Setup the link properties
-    props <- pw_properties_new
-    pw_properties_set_id props "link.output.port" linkProperties.portOutput
-    pw_properties_set_id props "link.input.port" linkProperties.portInput
-    when linkProperties.linger do
-        -- Keep the link after the program quit
-        pw_properties_set_linger props
-
+    props <- newLinkProperties linkProperties
     -- Create the link proxy
     pwLink <- pw_link_create core props
     cb pwLink
@@ -44,6 +38,16 @@ withLink core linkProperties cb = do
         -- That does not seem necessary as the pw_core_disconnect takes care of that,
         -- but that's what the pw-link.c is doing.
         pw_proxy_destroy pwLink.getProxy
+
+newLinkProperties :: LinkProperties -> IO PwProperties
+newLinkProperties linkProperties = do
+    props <- pw_properties_new
+    pw_properties_set_id props "link.output.port" linkProperties.portOutput
+    pw_properties_set_id props "link.input.port" linkProperties.portInput
+    when linkProperties.linger do
+        -- Keep the link after the program quit
+        pw_properties_set_linger props
+    pure props
 
 pw_link_create :: PwCore -> PwProperties -> IO PwLink
 pw_link_create core props =
@@ -56,24 +60,25 @@ newtype PortID = PortID PwID
 type LinkState = Either Text PwLinkState
 type PwLinkEventInfoHandler = PwID -> LinkState -> IO ()
 
-with_pw_link_events :: PwLink -> PwLinkEventInfoHandler -> IO a -> IO a
-with_pw_link_events (PwLink (PwProxy pwProxy)) infoHandler cb = with_spa_hook \(SpaHook spaHook) -> allocaBytes
-    (fromIntegral [C.pure| size_t {sizeof (struct pw_link_events)} |])
-    \p -> do
-        infoP <- $(C.mkFunPtr [t|Ptr () -> Ptr PwLinkInfoStruct -> IO ()|]) wrapper
-        [C.block| void{
-                struct pw_link_events* ple = $(struct pw_link_events* p);
+newtype PwLinkEvents = PwLinkEvents (Ptr PwLinkEventsStruct)
+
+pwLinkEventsFuncs :: PwLinkEvents -> ProxiedFuncs
+pwLinkEventsFuncs (PwLinkEvents pwe) = ProxiedFuncs $ castPtr pwe
+
+withPwLinkEvents :: PwLinkEventInfoHandler -> (PwLinkEvents -> IO a) -> IO a
+withPwLinkEvents infoHandler cb =
+    allocaBytes
+        (fromIntegral [C.pure| size_t {sizeof (struct pw_link_events)} |])
+        \pwLinkEvents -> do
+            infoP <- $(C.mkFunPtr [t|Ptr () -> Ptr PwLinkInfoStruct -> IO ()|]) wrapper
+            [C.block| void{
+                struct pw_link_events* ple = $(struct pw_link_events* pwLinkEvents);
                 ple->version = PW_VERSION_LINK_EVENTS;
                 ple->info = $(void (*infoP)(void*, const struct pw_link_info*));
-                pw_proxy_add_object_listener(
-                  $(struct pw_proxy* pwProxy),
-                  $(struct spa_hook* spaHook),
-                  ple,
-                  NULL);
         }|]
-        cb
-            `finally` do
-                freeHaskellFunPtr infoP
+            cb (PwLinkEvents pwLinkEvents)
+                `finally` do
+                    freeHaskellFunPtr infoP
   where
     wrapper _data ptr = do
         pwid <- PwID . fromIntegral <$> [C.exp| int{$(struct pw_link_info* ptr)->id}|]
@@ -84,3 +89,11 @@ with_pw_link_events (PwLink (PwProxy pwProxy)) infoHandler cb = with_spa_hook \(
                 err <- peekCString errC
                 infoHandler pwid (Left err)
             _ -> infoHandler pwid (Right state)
+
+-- LEGACY, use withPwLinkEvents instead
+with_pw_link_events :: PwLink -> PwLinkEventInfoHandler -> IO a -> IO a
+with_pw_link_events (PwLink pwProxy) infoHandler cb =
+    with_spa_hook \spaHook ->
+        withPwLinkEvents infoHandler \ple -> do
+            pw_proxy_add_object_listener pwProxy spaHook (pwLinkEventsFuncs ple)
+            cb

@@ -51,3 +51,15 @@ with_pw_proxy_events (PwProxy pwProxy) destroyHandler removedHandler errorHandle
     errorWrapper _data _seq res message = do
         err <- peekCString message
         errorHandler (fromIntegral res) err
+
+newtype ProxiedFuncs = ProxiedFuncs (Ptr ())
+
+pw_proxy_add_object_listener :: PwProxy -> SpaHook -> ProxiedFuncs -> IO ()
+pw_proxy_add_object_listener (PwProxy pwProxy) (SpaHook spaHook) (ProxiedFuncs funcs) =
+    [C.block| void{
+                pw_proxy_add_object_listener(
+                  $(struct pw_proxy* pwProxy),
+                  $(struct spa_hook* spaHook),
+                  $(const void *funcs),
+                  NULL);
+            }|]
