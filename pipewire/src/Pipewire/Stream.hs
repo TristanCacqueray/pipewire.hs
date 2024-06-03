@@ -116,7 +116,7 @@ writeAudioFrame (PwBuffer pwBuffer) samples = do
 pw_stream_new_simple :: PwLoop -> Text -> PwProperties -> PwStreamEvents -> Ptr () -> IO PwStream
 pw_stream_new_simple (PwLoop pwLoop) name (PwProperties props) (PwStreamEvents pwStreamEvents) (castPtr -> dataPtr) =
     withCString name \nameC -> do
-        PwStream
+        PwStream . dieOnNull "pw_stream_new_simple"
             <$> [C.exp| struct pw_stream*{
                pw_stream_new_simple(
                        $(struct pw_loop* pwLoop),
@@ -129,7 +129,7 @@ pw_stream_new_simple (PwLoop pwLoop) name (PwProperties props) (PwStreamEvents p
 pw_stream_new :: PwCore -> Text -> PwProperties -> IO PwStream
 pw_stream_new (PwCore pwCore) name (PwProperties props) =
     withCString name \nameC ->
-        PwStream
+        PwStream . dieOnNull "pw_stream_new"
             <$> [C.exp| struct pw_stream*{
                    pw_stream_new(
                      $(struct pw_core* pwCore),
@@ -144,9 +144,10 @@ pw_stream_destroy :: PwStream -> IO ()
 pw_stream_destroy (PwStream pwStream) =
     [C.exp| void{pw_stream_destroy($(struct pw_stream* pwStream))} |]
 
-pw_stream_dequeue_bufer :: PwStream -> IO PwBuffer
+pw_stream_dequeue_bufer :: PwStream -> IO (Maybe PwBuffer)
 pw_stream_dequeue_bufer (PwStream pwStream) =
-    PwBuffer <$> [C.exp| struct pw_buffer*{pw_stream_dequeue_buffer($(struct pw_stream* pwStream))} |]
+    maybeOnNull PwBuffer
+        <$> [C.exp| struct pw_buffer*{pw_stream_dequeue_buffer($(struct pw_stream* pwStream))} |]
 
 pw_stream_queue_buffer :: PwStream -> PwBuffer -> IO ()
 pw_stream_queue_buffer (PwStream pwStream) (PwBuffer pwBuffer) =

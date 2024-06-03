@@ -1,6 +1,8 @@
 -- | Helper functions and re-export
 module Pipewire.Prelude (
     peekCString,
+    dieOnNull,
+    maybeOnNull,
 
     -- * Base
     module Data.Word,
@@ -32,3 +34,13 @@ peekCString :: CString -> IO Text
 peekCString cs = do
     bs <- unsafePackCString cs
     return $! decodeUtf8 bs
+
+dieOnNull :: String -> Ptr a -> Ptr a
+dieOnNull src ptr
+    | ptr == nullPtr = error $ src <> " returned NULL"
+    | otherwise = ptr
+
+maybeOnNull :: (Ptr a -> b) -> Ptr a -> Maybe b
+maybeOnNull mk ptr
+    | ptr == nullPtr = Nothing
+    | otherwise = Just (mk ptr)

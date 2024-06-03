@@ -25,8 +25,11 @@ main = PW.withPipewire $ PW.withMainLoop \mainLoop -> do
     -- The stream onProcess callback
     onProcess accumulatorRef pwStream = do
         -- Get the next buffer
-        buffer <- PW.pw_stream_dequeue_bufer pwStream
+        PW.pw_stream_dequeue_bufer pwStream >>= \case
+            Just buffer -> onProcessBuffer accumulatorRef pwStream buffer
+            Nothing -> putStrLn "out of buffer"
 
+    onProcessBuffer accumulatorRef pwStream buffer = do
         -- Check how many samples is needed
         frames <- PW.audioFrames chans buffer
         -- putStrLn $ "On process called!, n_frames=" <> show frames

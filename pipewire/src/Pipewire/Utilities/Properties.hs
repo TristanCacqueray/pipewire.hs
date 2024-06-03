@@ -23,11 +23,13 @@ pw_properties_set_linger (PwProperties pwProperties) =
 -- TODO: bind pw_properties_destroy and provide withProperties wrapper
 pw_properties_new :: IO PwProperties
 pw_properties_new =
-    PwProperties <$> [C.exp| struct pw_properties*{pw_properties_new(NULL, NULL)} |]
+    PwProperties . dieOnNull "pw_properties_new"
+        <$> [C.exp| struct pw_properties*{pw_properties_new(NULL, NULL)} |]
 
 pw_properties_new_dict :: SpaDict -> IO PwProperties
 pw_properties_new_dict (SpaDict spaDict) =
-    PwProperties <$> [C.exp| struct pw_properties*{pw_properties_new_dict($(const struct spa_dict* spaDict))} |]
+    PwProperties . dieOnNull "pw_properties_new_dict"
+        <$> [C.exp| struct pw_properties*{pw_properties_new_dict($(const struct spa_dict* spaDict))} |]
 
 pw_properties_set :: PwProperties -> Text -> Text -> IO ()
 pw_properties_set (PwProperties pwProperties) key val =

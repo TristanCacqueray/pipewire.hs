@@ -72,20 +72,18 @@ pw_id_core = PwID $ fromIntegral [C.pure| int{PW_ID_CORE} |]
 
 pw_core_disconnect :: PwCore -> IO ()
 pw_core_disconnect (PwCore core) =
-    [C.block| void{
-            struct pw_core* core = $(struct pw_core* core);
-            if (core) pw_core_disconnect(core);
-    } |]
+    [C.exp| void{pw_core_disconnect($(struct pw_core* core))} |]
 
 pw_core_get_registry :: PwCore -> IO PwRegistry
 pw_core_get_registry (PwCore core) =
-    PwRegistry <$> [C.exp| struct pw_registry*{pw_core_get_registry($(struct pw_core* core), PW_VERSION_REGISTRY, 0)} |]
+    PwRegistry . dieOnNull "pw_core_get_registry"
+        <$> [C.exp| struct pw_registry*{pw_core_get_registry($(struct pw_core* core), PW_VERSION_REGISTRY, 0)} |]
 
 pw_core_create_object :: PwCore -> Text -> Text -> PwVersion -> PwProperties -> IO PwProxy
 pw_core_create_object (PwCore core) factoryName typeName (PwVersion (fromIntegral -> version)) (PwProperties props) =
     withCString factoryName \cFactoryName ->
         withCString typeName \cType ->
-            PwProxy
+            PwProxy . dieOnNull "pw_core_create_object"
                 <$> [C.exp| struct pw_proxy*{pw_core_create_object(
                           $(struct pw_core* core),
                           $(const char* cFactoryName),

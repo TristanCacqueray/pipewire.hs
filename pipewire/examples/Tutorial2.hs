@@ -35,4 +35,4 @@ main =
             putStrLn "Waiting 2sec before stopping the loop"
             threadDelay 2_000_000
             putStrLn "Quitting the loop"
-            print =<< PW.pw_main_loop_quit mainLoop
+            PW.pw_main_loop_quit mainLoop

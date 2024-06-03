@@ -257,7 +257,7 @@ withVideoHandlers pwMainLoop pwStream@(PwStream s) stateHandler draw cb =
 withVideoStream :: PwMainLoop -> PwCore -> StateHandler -> DrawHandler -> (PwStream -> IO a) -> IO a
 withVideoStream pwMainLoop pwCore stateHandler draw cb = do
     props <-
-        PwProperties
+        PwProperties . dieOnNull "pw_properties_new"
             <$> [C.exp| struct pw_properties*{
                  pw_properties_new(PW_KEY_MEDIA_CLASS, "Video/Source", NULL)
            }|]

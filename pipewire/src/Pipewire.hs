@@ -174,7 +174,7 @@ syncState pwInstance cb = do
     -- Write the expected SeqID so that the core handler stop the loop
     writeIORef pwInstance.sync =<< pw_core_sync pwInstance.core pw_id_core
     -- Start the loop
-    void $ pw_main_loop_run pwInstance.mainLoop
+    pw_main_loop_run pwInstance.mainLoop
     -- Call back with the finalized state
     getErrors pwInstance >>= \case
         Just errs -> cb (Left errs)

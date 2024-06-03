@@ -35,7 +35,7 @@ main =
         putStrLn $ "done: id:" <> show pwid <> " seq:" <> show seqid' <> " expected:" <> show pending
         when (pending == seqid') do
             putStrLn "Quitting"
-            print =<< PW.pw_main_loop_quit mainLoop
+            PW.pw_main_loop_quit mainLoop
 
     infoHandler _coreInfo = pure ()
 

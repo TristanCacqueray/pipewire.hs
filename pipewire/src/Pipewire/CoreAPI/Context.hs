@@ -14,11 +14,13 @@ C.include "<pipewire/context.h>"
 
 pw_context_new :: PwLoop -> IO PwContext
 pw_context_new (PwLoop loop) =
-    PwContext <$> [C.exp| struct pw_context*{pw_context_new($(struct pw_loop* loop), NULL, 0)} |]
+    PwContext . dieOnNull "pw_context_new"
+        <$> [C.exp| struct pw_context*{pw_context_new($(struct pw_loop* loop), NULL, 0)} |]
 
 pw_context_connect :: PwContext -> IO PwCore
 pw_context_connect (PwContext ctx) =
-    PwCore <$> [C.exp| struct pw_core*{pw_context_connect($(struct pw_context* ctx), NULL, 0)} |]
+    PwCore . dieOnNull "pw_context_connect"
+        <$> [C.exp| struct pw_core*{pw_context_connect($(struct pw_context* ctx), NULL, 0)} |]
 
 pw_context_destroy :: PwContext -> IO ()
 pw_context_destroy (PwContext ctx) =
