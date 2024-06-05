@@ -18,7 +18,6 @@ module Pipewire (
 
     -- * Protocol
     module Pipewire.Protocol,
-    module Pipewire.Constants,
     module Pipewire.Enum,
 
     -- * Core API
@@ -79,7 +78,6 @@ import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, withMVar)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Pipewire.Constants
 import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
 import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, PwRegistry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, withCoreEvents)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)

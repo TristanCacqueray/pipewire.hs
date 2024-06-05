@@ -2,6 +2,7 @@
 module Pipewire.Prelude (
     peekCString,
     dieOnNull,
+    dieOnErr,
     maybeOnNull,
 
     -- * Base
@@ -34,6 +35,11 @@ peekCString :: CString -> IO Text
 peekCString cs = do
     bs <- unsafePackCString cs
     return $! decodeUtf8 bs
+
+dieOnErr :: String -> CInt -> ()
+dieOnErr src v
+    | v < 0 = error $ src <> " returned " <> show v
+    | otherwise = ()
 
 dieOnNull :: String -> Ptr a -> Ptr a
 dieOnNull src ptr

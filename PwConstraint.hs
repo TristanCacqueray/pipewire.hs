@@ -115,12 +115,12 @@ applyConstraints (Constraint xs) state = simplify $ concatMap evalStm xs
     findInIDs :: (Regex, Regex) -> Maybe (PwID, PwID)
     findInIDs (inLeft, inRight) = (,) <$> findPort inputs inLeft <*> findPort inputs inRight
 
-    applyForcePort :: Regex -> Regex -> _ -> [Action]
+    applyForcePort :: Regex -> Regex -> (PwID -> PwID -> [Either PwID b]) -> [Action]
     applyForcePort outPort inpPort f = case (findPort outputs outPort, findPort inputs inpPort) of
         (Just out, Just inp) -> ensure out inp f
         _ -> []
 
-    ensure :: PwID -> PwID -> _ -> [Action]
+    ensure :: PwID -> PwID -> (PwID -> PwID -> [Either PwID b]) -> [Action]
     ensure out inp f = case present of
         [] -> AddLink (out, inp) : unWanted
         _ -> unWanted

@@ -4,6 +4,7 @@
 
 module Pipewire.Enum where
 
+import Data.Text (Text)
 import Foreign (Storable)
 import Foreign.C.Types (CInt)
 import Pipewire.Protocol
@@ -54,3 +55,33 @@ pattern PW_STREAM_STATE_UNCONNECTED = PwStreamState (#const PW_STREAM_STATE_UNCO
 pattern PW_STREAM_STATE_CONNECTING = PwStreamState (#const PW_STREAM_STATE_CONNECTING) :: PwStreamState
 pattern PW_STREAM_STATE_PAUSED = PwStreamState (#const PW_STREAM_STATE_PAUSED) :: PwStreamState
 pattern PW_STREAM_STATE_STREAMING = PwStreamState (#const PW_STREAM_STATE_STREAMING) :: PwStreamState
+
+{- | Update with
+/* awk '/#define PW_TYPE_INTERFACE_/ { print "m" $2 " :: Text"; print "m" $2 " = " $4; print "" }' pipewire/*.h */
+-}
+mPW_TYPE_INTERFACE_Client :: Text
+mPW_TYPE_INTERFACE_Client = "Client"
+
+mPW_TYPE_INTERFACE_Core :: Text
+mPW_TYPE_INTERFACE_Core = "Core"
+
+mPW_TYPE_INTERFACE_Registry :: Text
+mPW_TYPE_INTERFACE_Registry = "Registry"
+
+mPW_TYPE_INTERFACE_Device :: Text
+mPW_TYPE_INTERFACE_Device = "Device"
+
+mPW_TYPE_INTERFACE_Factory :: Text
+mPW_TYPE_INTERFACE_Factory = "Factory"
+
+mPW_TYPE_INTERFACE_Link :: Text
+mPW_TYPE_INTERFACE_Link = "Link"
+
+mPW_TYPE_INTERFACE_Module :: Text
+mPW_TYPE_INTERFACE_Module = "Module"
+
+mPW_TYPE_INTERFACE_Node :: Text
+mPW_TYPE_INTERFACE_Node = "Node"
+
+mPW_TYPE_INTERFACE_Port :: Text
+mPW_TYPE_INTERFACE_Port = "Port"

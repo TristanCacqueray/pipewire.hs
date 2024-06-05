@@ -24,9 +24,9 @@ pw_main_loop_destroy :: PwMainLoop -> IO ()
 pw_main_loop_destroy (PwMainLoop mainLoop) =
     [C.exp| void{pw_main_loop_destroy($(struct pw_main_loop* mainLoop))} |]
 
-pw_main_loop_run :: PwMainLoop -> IO CInt
+pw_main_loop_run :: PwMainLoop -> IO ()
 pw_main_loop_run (PwMainLoop mainLoop) =
-    [C.exp| int{pw_main_loop_run($(struct pw_main_loop* mainLoop))} |]
+    dieOnErr "pw_main_loop_run" <$> [C.exp| int{pw_main_loop_run($(struct pw_main_loop* mainLoop))} |]
 
 pw_main_loop_quit :: PwMainLoop -> IO ()
 pw_main_loop_quit (PwMainLoop mainLoop) =

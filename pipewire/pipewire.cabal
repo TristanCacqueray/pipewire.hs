@@ -42,7 +42,6 @@ library
   -- cabal-gild: discover src
   exposed-modules:
     Pipewire
-    Pipewire.Constants
     Pipewire.CoreAPI.CContext
     Pipewire.CoreAPI.Context
     Pipewire.CoreAPI.Core

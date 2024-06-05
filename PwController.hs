@@ -21,7 +21,7 @@ data UpdateChan = UpdateChan
     , baton :: MVar ()
     }
 
-eventsLoop :: Usage any -> UpdateChan -> _ -> IO ()
+eventsLoop :: Usage any -> UpdateChan -> Q.ByteStream IO () -> IO ()
 eventsLoop usage updateChan = skipInit
   where
     skipInit bs = do
@@ -77,7 +77,7 @@ controllerLoop usage updateChan = go
                 unless usage.dry do delPwLink pwid
         go
 
-mainLoop :: Usage Constraint -> _ -> IO ()
+mainLoop :: Usage Constraint -> Q.ByteStream IO () -> IO ()
 mainLoop usage bs = do
     updateChan <- UpdateChan <$> newIORef initialState <*> newEmptyMVar
     race_ (eventsLoop usage updateChan bs) (controllerLoop usage updateChan)
