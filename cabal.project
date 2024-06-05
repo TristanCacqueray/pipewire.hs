@@ -1,2 +1,3 @@
-packages: ./pw-controller.cabal ./pipewire
-flags: +examples
+packages: ./pw-controller.cabal ./pipewire/pipewire.cabal
+package pipewire
+  flags: +examples

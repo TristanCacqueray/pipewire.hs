@@ -129,3 +129,10 @@ executable hs-pw-link
 executable video-src
   import: examples
   main-is: VideoSrc.hs
+
+executable hs-pw-play
+  import: examples
+  main-is: PwPlay.hs
+  build-depends:
+    hsndfile,
+    hsndfile-vector,

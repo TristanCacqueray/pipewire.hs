@@ -14,15 +14,12 @@
       # The haskell package set override
       haskellExtend = hpFinal: hpPrev: {
         ${name} = hpPrev.callCabal2nix name ./. { };
-        "pipewire" = hpPrev.callCabal2nix "pipewire" ./pipewire { libpipewire = pkgs.pipewire; };
+        "pipewire" = hpPrev.callCabal2nixWithOptions "pipewire" ./pipewire
+          "--flag=examples" { libpipewire = pkgs.pipewire; };
       };
       hsPkgs = pkgs.haskellPackages.extend haskellExtend;
 
-      ciTools = [
-        pkgs.cabal-install
-        pkgs.haskellPackages.fourmolu
-        pkgs.hlint
-      ];
+      ciTools = [ pkgs.cabal-install pkgs.haskellPackages.fourmolu pkgs.hlint ];
       devTools = [
         pkgs.haskell-language-server
         pkgs.ghcid
@@ -34,9 +31,7 @@
       ];
     in {
       devShell.x86_64-linux = hsPkgs.shellFor {
-        packages = p: [
-          p.${name} p.pipewire
-        ];
+        packages = p: [ p.${name} p.pipewire ];
         buildInputs = ciTools ++ devTools;
       };
     };

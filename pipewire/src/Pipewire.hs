@@ -68,6 +68,7 @@ module Pipewire (
     -- * Helpers
     getHeadersVersion,
     getLibraryVersion,
+    cfloatVector,
 )
 where
 

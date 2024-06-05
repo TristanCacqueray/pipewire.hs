@@ -18,6 +18,10 @@ module Pipewire.Prelude (
     -- * text
     Text,
     withCString,
+
+    -- * vector
+    Vector,
+    cfloatVector,
 ) where
 
 import Control.Exception (finally)
@@ -26,10 +30,13 @@ import Data.ByteString.Unsafe (unsafePackCString)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Foreign (withCString)
+import Data.Vector.Storable (Vector)
+import Data.Vector.Storable qualified as SV
 import Data.Word
 import Foreign (FunPtr, Ptr, alloca, allocaBytes, freeHaskellFunPtr, nullPtr)
 import Foreign.C.String (CString)
-import Foreign.C.Types (CInt)
+import Foreign.C.Types (CFloat, CInt)
+import Foreign.C.Types qualified (CFloat (..))
 
 peekCString :: CString -> IO Text
 peekCString cs = do
@@ -50,3 +57,6 @@ maybeOnNull :: (Ptr a -> b) -> Ptr a -> Maybe b
 maybeOnNull mk ptr
     | ptr == nullPtr = Nothing
     | otherwise = Just (mk ptr)
+
+cfloatVector :: SV.Vector Float -> SV.Vector CFloat
+cfloatVector = SV.unsafeCoerceVector

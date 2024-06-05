@@ -2,7 +2,7 @@ module Pipewire.Stream where
 
 import Language.C.Inline qualified as C
 
-import Data.Vector.Storable qualified as VS
+import Data.Vector.Storable qualified as SV
 import Foreign (Storable (..), castPtr)
 
 import Pipewire.CoreAPI.CContext
@@ -11,6 +11,7 @@ import Pipewire.CoreAPI.Loop (PwLoop (..))
 import Pipewire.Prelude
 import Pipewire.Protocol
 import Pipewire.SPA.CContext qualified as SPAUtils
+import Pipewire.SPA.Utilities.Hooks (SpaHook (..), withSpaHook)
 import Pipewire.Utilities.CContext qualified as Utils
 import Pipewire.Utilities.Properties (PwProperties (..))
 
@@ -33,38 +34,57 @@ withStreamEvents :: (PwStreamEvents -> IO a) -> IO a
 withStreamEvents cb =
     allocaBytes (fromIntegral [C.pure| size_t {sizeof (struct pw_stream_events)} |]) (cb . PwStreamEvents)
 
-withAudioStream :: PwLoop -> OnProcessHandler -> (PwStream -> IO a) -> IO a
-withAudioStream pwLoop onProcess cb = do
-    allocaBytes (fromIntegral [C.pure| size_t {sizeof (struct pw_stream**)} |]) \(streamData :: Ptr ()) -> do
-        withStreamEvents \(PwStreamEvents streamEvents) -> do
-            onProcessP <- $(C.mkFunPtr [t|Ptr () -> IO ()|]) onProcessWrapper
-            -- setup pw_stream_events
-            [C.block| void{
+simpleAudioHandler :: Channels -> (Int -> IO (SV.Vector Float)) -> OnProcessHandler
+simpleAudioHandler chans cb pwStream = do
+    -- Get the next buffer
+    pw_stream_dequeue_bufer pwStream >>= \case
+        Just buffer -> do
+            -- Check how many samples is needed
+            nFrames <- audioFrames chans buffer
+            -- Write new samples
+            writeAudioFrame buffer =<< cb nFrames
+            -- Submit the buffer
+            pw_stream_queue_buffer pwStream buffer
+        Nothing -> putStrLn "out of buffer"
+
+withAudioHandlers :: PwStream -> OnProcessHandler -> (PwStream -> IO a) -> IO a
+withAudioHandlers pwStream@(PwStream s) onProcess cb =
+    withSpaHook \(SpaHook spaHook) -> withStreamEvents \(PwStreamEvents streamEvents) -> do
+        onProcessP <- $(C.mkFunPtr [t|Ptr () -> IO ()|]) onProcessWrapper
+        -- setup pw_stream_events
+        [C.block| void{
                 struct pw_stream_events* pw_events = $(struct pw_stream_events* streamEvents);
                 pw_events->version = PW_VERSION_STREAM_EVENTS;
                 pw_events->process = $(void (*onProcessP)(void*));
+                pw_stream_add_listener($(struct pw_stream* s),
+                    $(struct spa_hook* spaHook),
+                    pw_events,
+                    NULL);
             }|]
-            props <-
-                PwProperties
-                    <$> [C.exp| struct pw_properties*{pw_properties_new(
+        cb pwStream `finally` do
+            freeHaskellFunPtr onProcessP
+  where
+    onProcessWrapper _data = onProcess pwStream
+
+withAudioStream :: PwCore -> OnProcessHandler -> (PwStream -> IO a) -> IO a
+withAudioStream pwCore onProcess cb = do
+    props <-
+        PwProperties
+            <$> [C.exp| struct pw_properties*{pw_properties_new(
                                             PW_KEY_MEDIA_TYPE, "Audio",
                                             PW_KEY_MEDIA_CATEGORY, "Playback",
                                             PW_KEY_MEDIA_ROLE, "Music",
                                             NULL)}|]
-            stream <- pw_stream_new_simple pwLoop "audio-src" props (PwStreamEvents streamEvents) streamData
-            poke (castPtr streamData) stream
-            cb stream `finally` do
-                pw_stream_destroy stream
-                freeHaskellFunPtr onProcessP
-  where
-    onProcessWrapper streamData = do
-        stream <- PwStream <$> peek (castPtr streamData)
-        onProcess stream
+    pwStream <- pw_stream_new pwCore "audio-src" props
+    withAudioHandlers pwStream onProcess cb `finally` do
+        pw_stream_destroy pwStream
 
-type Channels = Int
+newtype Channels = Channels Int deriving newtype (Show)
+newtype Rate = Rate Int deriving newtype (Show)
 
-connectAudioStream :: Channels -> PwStream -> IO ()
-connectAudioStream (fromIntegral -> chans) (PwStream pwStream) = do
+-- | Connect the stream (using s16 format)
+connectAudioStream :: Rate -> Channels -> PwStream -> IO ()
+connectAudioStream (Rate (fromIntegral -> rate)) (Channels (fromIntegral -> chans)) (PwStream pwStream) = do
     [C.block| void{
     const struct spa_pod *params[1];
     uint8_t buffer[1024];
@@ -74,7 +94,7 @@ connectAudioStream (fromIntegral -> chans) (PwStream pwStream) = do
                         &SPA_AUDIO_INFO_RAW_INIT(
                                 .format = SPA_AUDIO_FORMAT_S16,
                                 .channels = $(int chans),
-                                .rate = 44100 ));
+                                .rate = $(int rate) ));
 
     pw_stream_connect($(struct pw_stream* pwStream),
                           PW_DIRECTION_OUTPUT,
@@ -86,7 +106,7 @@ connectAudioStream (fromIntegral -> chans) (PwStream pwStream) = do
   }|]
 
 audioFrames :: Channels -> PwBuffer -> IO Int
-audioFrames (fromIntegral -> chans) (PwBuffer pwBuffer) =
+audioFrames (Channels (fromIntegral -> chans)) (PwBuffer pwBuffer) =
     fromIntegral
         <$> [C.block| int{
     struct pw_buffer* b = $(struct pw_buffer* pwBuffer);
@@ -103,8 +123,9 @@ audioFrames (fromIntegral -> chans) (PwBuffer pwBuffer) =
     return n_frames;
   }|]
 
-writeAudioFrame :: PwBuffer -> VS.Vector C.CFloat -> IO ()
-writeAudioFrame (PwBuffer pwBuffer) samples = do
+-- | Write the frame (to a s16 formated buffer)
+writeAudioFrame :: PwBuffer -> SV.Vector Float -> IO ()
+writeAudioFrame (PwBuffer pwBuffer) (cfloatVector -> samples) = do
     [C.block| void {
       struct pw_buffer* b = $(struct pw_buffer* pwBuffer);
       float *src = $vec-ptr:(float *samples);
