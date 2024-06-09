@@ -76,15 +76,19 @@ pw_core_disconnect (PwCore core) =
 
 pw_core_get_registry :: PwCore -> IO PwRegistry
 pw_core_get_registry (PwCore core) =
-    PwRegistry . dieOnNull "pw_core_get_registry"
-        <$> [C.exp| struct pw_registry*{pw_core_get_registry($(struct pw_core* core), PW_VERSION_REGISTRY, 0)} |]
+    PwRegistry
+        <$> dieOnNull
+            "pw_core_get_registry"
+            [C.exp| struct pw_registry*{pw_core_get_registry($(struct pw_core* core), PW_VERSION_REGISTRY, 0)} |]
 
 pw_core_create_object :: PwCore -> Text -> Text -> PwVersion -> PwProperties -> IO PwProxy
 pw_core_create_object (PwCore core) factoryName typeName (PwVersion (fromIntegral -> version)) (PwProperties props) =
     withCString factoryName \cFactoryName ->
         withCString typeName \cType ->
-            PwProxy . dieOnNull "pw_core_create_object"
-                <$> [C.exp| struct pw_proxy*{pw_core_create_object(
+            PwProxy
+                <$> dieOnNull
+                    "pw_core_create_object"
+                    [C.exp| struct pw_proxy*{pw_core_create_object(
                           $(struct pw_core* core),
                           $(const char* cFactoryName),
                           $(const char* cType),

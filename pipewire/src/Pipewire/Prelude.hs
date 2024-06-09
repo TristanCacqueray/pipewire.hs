@@ -43,15 +43,18 @@ peekCString cs = do
     bs <- unsafePackCString cs
     return $! decodeUtf8 bs
 
-dieOnErr :: String -> CInt -> ()
-dieOnErr src v
-    | v < 0 = error $ src <> " returned " <> show v
-    | otherwise = ()
+dieOnErr :: String -> IO CInt -> IO ()
+dieOnErr src act = do
+    v <- act
+    when (v < 0) do
+        ioError $ userError $ src <> " returned " <> show v
 
-dieOnNull :: String -> Ptr a -> Ptr a
-dieOnNull src ptr
-    | ptr == nullPtr = error $ src <> " returned NULL"
-    | otherwise = ptr
+dieOnNull :: String -> IO (Ptr a) -> IO (Ptr a)
+dieOnNull src act = do
+    ptr <- act
+    if ptr == nullPtr
+        then ioError $ userError $ src <> " returned NULL"
+        else pure ptr
 
 maybeOnNull :: (Ptr a -> b) -> Ptr a -> Maybe b
 maybeOnNull mk ptr

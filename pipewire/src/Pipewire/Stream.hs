@@ -137,8 +137,10 @@ writeAudioFrame (PwBuffer pwBuffer) (cfloatVector -> samples) = do
 pw_stream_new_simple :: PwLoop -> Text -> PwProperties -> PwStreamEvents -> Ptr () -> IO PwStream
 pw_stream_new_simple (PwLoop pwLoop) name (PwProperties props) (PwStreamEvents pwStreamEvents) (castPtr -> dataPtr) =
     withCString name \nameC -> do
-        PwStream . dieOnNull "pw_stream_new_simple"
-            <$> [C.exp| struct pw_stream*{
+        PwStream
+            <$> dieOnNull
+                "pw_stream_new_simple"
+                [C.exp| struct pw_stream*{
                pw_stream_new_simple(
                        $(struct pw_loop* pwLoop),
                        $(const char* nameC),
@@ -150,8 +152,10 @@ pw_stream_new_simple (PwLoop pwLoop) name (PwProperties props) (PwStreamEvents p
 pw_stream_new :: PwCore -> Text -> PwProperties -> IO PwStream
 pw_stream_new (PwCore pwCore) name (PwProperties props) =
     withCString name \nameC ->
-        PwStream . dieOnNull "pw_stream_new"
-            <$> [C.exp| struct pw_stream*{
+        PwStream
+            <$> dieOnNull
+                "pw_stream_new"
+                [C.exp| struct pw_stream*{
                    pw_stream_new(
                      $(struct pw_core* pwCore),
                      $(const char* nameC),

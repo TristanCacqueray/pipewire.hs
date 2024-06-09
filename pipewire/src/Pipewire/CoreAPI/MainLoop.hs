@@ -14,7 +14,7 @@ C.include "<pipewire/main-loop.h>"
 newtype PwMainLoop = PwMainLoop (Ptr PwMainLoopStruct)
 
 pw_main_loop_new :: IO PwMainLoop
-pw_main_loop_new = PwMainLoop . dieOnNull "pw_main_loop_new" <$> [C.exp| struct pw_main_loop*{pw_main_loop_new(NULL)} |]
+pw_main_loop_new = PwMainLoop <$> dieOnNull "pw_main_loop_new" [C.exp| struct pw_main_loop*{pw_main_loop_new(NULL)} |]
 
 pw_main_loop_get_loop :: PwMainLoop -> IO PwLoop
 pw_main_loop_get_loop (PwMainLoop mainLoop) =
@@ -26,7 +26,7 @@ pw_main_loop_destroy (PwMainLoop mainLoop) =
 
 pw_main_loop_run :: PwMainLoop -> IO ()
 pw_main_loop_run (PwMainLoop mainLoop) =
-    dieOnErr "pw_main_loop_run" <$> [C.exp| int{pw_main_loop_run($(struct pw_main_loop* mainLoop))} |]
+    dieOnErr "pw_main_loop_run" [C.exp| int{pw_main_loop_run($(struct pw_main_loop* mainLoop))} |]
 
 pw_main_loop_quit :: PwMainLoop -> IO ()
 pw_main_loop_quit (PwMainLoop mainLoop) =
