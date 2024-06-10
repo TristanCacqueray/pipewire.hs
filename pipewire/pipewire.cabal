@@ -3,7 +3,7 @@ name: pipewire
 version: 0.1
 -- synopsis:
 -- description:
-license: GPL-3.0-only
+license: MIT
 license-file: LICENSE
 author: Tristan Cacqueray
 maintainer: tristan.cacqueray@gmail.com
