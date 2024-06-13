@@ -16,7 +16,7 @@ C.context (C.baseCtx <> pwContext)
 C.include "<pipewire/link.h>"
 
 -- | A Link proxy
-newtype PwLink = PwLink {getProxy :: PwProxy}
+newtype Link = Link {getProxy :: PwProxy}
 
 -- | Link creation options
 data LinkProperties = LinkProperties
@@ -27,7 +27,7 @@ data LinkProperties = LinkProperties
     }
 
 -- | Setup a link (synchronously)
-withLink :: PwCore -> LinkProperties -> (PwLink -> IO a) -> IO a
+withLink :: Core -> LinkProperties -> (Link -> IO a) -> IO a
 withLink core linkProperties cb = do
     -- Setup the link properties
     props <- newLinkProperties linkProperties
@@ -51,26 +51,25 @@ newLinkProperties linkProperties = do
         pw_properties_set_linger props
     pure props
 
-pw_link_create :: PwCore -> PwProperties -> IO PwLink
+pw_link_create :: Core -> PwProperties -> IO Link
 pw_link_create core props =
     -- TODO: check for nullPtr
-    PwLink <$> pw_core_create_object core "link-factory" "PipeWire:Interface:Link" mPW_VERSION_LINK props
+    Link <$> pw_core_create_object core "link-factory" "PipeWire:Interface:Link" mPW_VERSION_LINK props
 
 newtype NodeID = NodeeID PwID
 newtype PortID = PortID PwID
 
-type LinkState = Either Text PwLinkState
-type PwLinkEventInfoHandler = PwID -> LinkState -> IO ()
+type LinkEventInfoHandler = PwID -> Either Text LinkState -> IO ()
 
-newtype PwLinkEvents = PwLinkEvents (Ptr PwLinkEventsStruct)
+newtype LinkEvents = LinkEvents (Ptr PwLinkEventsStruct)
 
--- | Convert the 'PwLinkEvents' for 'pw_proxy_add_object_listener'
-pwLinkEventsFuncs :: PwLinkEvents -> ProxiedFuncs
-pwLinkEventsFuncs (PwLinkEvents pwe) = ProxiedFuncs $ castPtr pwe
+-- | Convert the 'LinkEvents' for 'pw_proxy_add_object_listener'
+pwLinkEventsFuncs :: LinkEvents -> ProxiedFuncs
+pwLinkEventsFuncs (LinkEvents pwe) = ProxiedFuncs $ castPtr pwe
 
 -- | Setup the pw_link_events handlers
-withPwLinkEvents :: PwLinkEventInfoHandler -> (PwLinkEvents -> IO a) -> IO a
-withPwLinkEvents infoHandler cb =
+withLinkEvents :: LinkEventInfoHandler -> (LinkEvents -> IO a) -> IO a
+withLinkEvents infoHandler cb =
     allocaBytes
         (fromIntegral [C.pure| size_t {sizeof (struct pw_link_events)} |])
         \pwLinkEvents -> do
@@ -80,13 +79,13 @@ withPwLinkEvents infoHandler cb =
                 ple->version = PW_VERSION_LINK_EVENTS;
                 ple->info = $(void (*infoP)(void*, const struct pw_link_info*));
         }|]
-            cb (PwLinkEvents pwLinkEvents)
+            cb (LinkEvents pwLinkEvents)
                 `finally` do
                     freeHaskellFunPtr infoP
   where
     wrapper _data ptr = do
         pwid <- PwID . fromIntegral <$> [C.exp| int{$(struct pw_link_info* ptr)->id}|]
-        (state :: PwLinkState) <- PwLinkState <$> [C.exp| int{$(struct pw_link_info* ptr)->state} |]
+        (state :: LinkState) <- LinkState <$> [C.exp| int{$(struct pw_link_info* ptr)->state} |]
         case state of
             PW_LINK_STATE_ERROR -> do
                 (errC :: CString) <- [C.exp| const char*{$(struct pw_link_info* ptr)->error} |]

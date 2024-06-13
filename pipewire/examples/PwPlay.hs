@@ -39,7 +39,7 @@ play (rate, chans, samples) = PW.withPipewire $ PW.withMainLoop \mainLoop -> do
             PW.pw_main_loop_run mainLoop
   where
     PW.Channels chanCount = chans
-    onProcess :: PW.PwMainLoop -> IORef Int -> Int -> IO (SV.Vector Float)
+    onProcess :: PW.MainLoop -> IORef Int -> Int -> IO (SV.Vector Float)
     onProcess loop posRef frames = do
         -- Read current playback position
         pos <- readIORef posRef

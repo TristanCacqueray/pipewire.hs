@@ -90,7 +90,7 @@ withAutoConnect cb = do
     nodeIDRef <- newIORef Nothing
 
     -- Setup the handler for the link events
-    PW.withSpaHook \spaHook -> PW.withPwLinkEvents linkInfoHandler \pwLinkEvents -> do
+    PW.withSpaHook \spaHook -> PW.withLinkEvents linkInfoHandler \pwLinkEvents -> do
         let
             -- Create the link between the ports
             connectPort pwInstance out inp = do

@@ -8,9 +8,9 @@ import Foreign (castPtr)
 import Language.C.Inline qualified as C
 
 import Pipewire.CContext
-import Pipewire.CoreAPI.Core (PwCore)
+import Pipewire.CoreAPI.Core (Core)
 import Pipewire.CoreAPI.Loop (SpaSource (..), pw_loop_add_timer)
-import Pipewire.CoreAPI.MainLoop (PwMainLoop (..), pw_main_loop_get_loop)
+import Pipewire.CoreAPI.MainLoop (MainLoop (..), pw_main_loop_get_loop)
 import Pipewire.Enum
 import Pipewire.Prelude
 import Pipewire.SPA.POD (SpaPod (..))
@@ -165,8 +165,8 @@ onStreamParamChanged (PwStream pwStream) (StridePtr stride) (SpaVideoInfoRaw vid
         pw_stream_update_params(stream, params, 4);
   }|]
 
-onStreamStateChanged :: PwMainLoop -> SpaSource -> PwStream -> PwStreamState -> PwStreamState -> IO ()
-onStreamStateChanged (PwMainLoop mainLoop) (SpaSource timer) (PwStream pwStream) (PwStreamState _old) (PwStreamState state) =
+onStreamStateChanged :: MainLoop -> SpaSource -> PwStream -> PwStreamState -> PwStreamState -> IO ()
+onStreamStateChanged (MainLoop mainLoop) (SpaSource timer) (PwStream pwStream) (PwStreamState _old) (PwStreamState state) =
     [C.block| void{
         struct pw_main_loop* loop = $(struct pw_main_loop* mainLoop);
         enum pw_stream_state state = $(int state);
@@ -203,7 +203,7 @@ onStreamStateChanged (PwMainLoop mainLoop) (SpaSource timer) (PwStream pwStream)
         }
   }|]
 
-withVideoHandlers :: PwMainLoop -> PwStream -> StateHandler -> DrawHandler -> (PwStream -> IO a) -> IO a
+withVideoHandlers :: MainLoop -> PwStream -> StateHandler -> DrawHandler -> (PwStream -> IO a) -> IO a
 withVideoHandlers pwMainLoop pwStream@(PwStream s) stateHandler draw cb =
     withSpaHook \(SpaHook spaHook) -> withStridePtr \stridePtr -> do
         loop <- pw_main_loop_get_loop pwMainLoop
@@ -251,7 +251,7 @@ withVideoHandlers pwMainLoop pwStream@(PwStream s) stateHandler draw cb =
         -- putStrLn "onTimeout"
         pw_stream_trigger_process pwStream
 
-withVideoStream :: PwMainLoop -> PwCore -> StateHandler -> DrawHandler -> (PwStream -> IO a) -> IO a
+withVideoStream :: MainLoop -> Core -> StateHandler -> DrawHandler -> (PwStream -> IO a) -> IO a
 withVideoStream pwMainLoop pwCore stateHandler draw cb = do
     props <-
         PwProperties

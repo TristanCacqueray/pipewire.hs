@@ -79,12 +79,12 @@ import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, withMVar)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Pipewire.CoreAPI.Context (PwContext, pw_context_connect, pw_context_destroy, pw_context_new)
-import Pipewire.CoreAPI.Core (DoneHandler, ErrorHandler, InfoHandler, PwCore, PwCoreEvents, PwCoreInfo, PwRegistry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, withCoreEvents)
+import Pipewire.CoreAPI.Context (Context, pw_context_connect, pw_context_destroy, pw_context_new)
+import Pipewire.CoreAPI.Core (Core, CoreEvents, CoreInfo, DoneHandler, ErrorHandler, InfoHandler, Registry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, withCoreEvents)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
-import Pipewire.CoreAPI.Link (LinkProperties (..), LinkState, PwLink (..), newLinkProperties, pwLinkEventsFuncs, pw_link_create, withLink, withPwLinkEvents)
-import Pipewire.CoreAPI.Loop (PwLoop)
-import Pipewire.CoreAPI.MainLoop (PwMainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
+import Pipewire.CoreAPI.Link (Link (..), LinkProperties (..), newLinkProperties, pwLinkEventsFuncs, pw_link_create, withLink, withLinkEvents)
+import Pipewire.CoreAPI.Loop (Loop)
+import Pipewire.CoreAPI.MainLoop (MainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
 import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_add_object_listener, pw_proxy_destroy, withProxyEvents)
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, withRegistryEvents)
 import Pipewire.Enum
@@ -101,15 +101,15 @@ withPipewire :: IO a -> IO a
 withPipewire = bracket_ pw_init pw_deinit
 
 -- | Setup a main loop with signal handlers
-withMainLoop :: (PwMainLoop -> IO a) -> IO a
+withMainLoop :: (MainLoop -> IO a) -> IO a
 withMainLoop cb = bracket pw_main_loop_new pw_main_loop_destroy withHandler
   where
     withHandler mainLoop = withSignalsHandler mainLoop (cb mainLoop)
 
-withContext :: PwLoop -> (PwContext -> IO a) -> IO a
+withContext :: Loop -> (Context -> IO a) -> IO a
 withContext loop = bracket (pw_context_new loop) pw_context_destroy
 
-withCore :: PwContext -> (PwCore -> IO a) -> IO a
+withCore :: Context -> (Core -> IO a) -> IO a
 withCore context = bracket (pw_context_connect context) pw_core_disconnect
 
 getHeadersVersion :: IO Text
@@ -121,9 +121,9 @@ getLibraryVersion = ([C.exp| const char*{pw_get_library_version()} |] :: IO CStr
 -- | A pipewire client instance
 data PwInstance state = PwInstance
     { stateVar :: MVar state
-    , mainLoop :: PwMainLoop
-    , core :: PwCore
-    , registry :: PwRegistry
+    , mainLoop :: MainLoop
+    , core :: Core
+    , registry :: Registry
     , sync :: IORef SeqID
     , errorsVar :: MVar [CoreError]
     }
@@ -209,7 +209,7 @@ withInstance initialState updateState cb =
         when (pending == seqid) do
             void $ pw_main_loop_quit mainLoop
 
-waitForLink :: PwLink -> PwInstance state -> IO (Maybe (NonEmpty CoreError))
+waitForLink :: Link -> PwInstance state -> IO (Maybe (NonEmpty CoreError))
 waitForLink pwLink pwInstance = do
     let abort msg = putStrLn msg >> quitInstance pwInstance
         destroyHandler = abort "Destroyed!"
@@ -226,7 +226,7 @@ waitForLink pwLink pwInstance = do
                     quitInstance pwInstance
 
         withSpaHook \spaHook ->
-            withPwLinkEvents infoHandler \ple -> do
+            withLinkEvents infoHandler \ple -> do
                 pw_proxy_add_object_listener pwLink.getProxy spaHook (pwLinkEventsFuncs ple)
                 putStrLn "Waiting for link..."
                 runInstance pwInstance

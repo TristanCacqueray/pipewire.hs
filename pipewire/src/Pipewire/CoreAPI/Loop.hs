@@ -10,12 +10,12 @@ C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/loop.h>"
 
-newtype PwLoop = PwLoop (Ptr PwLoopStruct)
+newtype Loop = Loop (Ptr PwLoopStruct)
 
 type SignalHandlerRaw = Ptr () -> Signal -> IO ()
 
-pw_loop_add_signal :: PwLoop -> Signal -> (Signal -> IO ()) -> IO a -> IO a
-pw_loop_add_signal (PwLoop pwLoop) signal handler cb = do
+pw_loop_add_signal :: Loop -> Signal -> (Signal -> IO ()) -> IO a -> IO a
+pw_loop_add_signal (Loop pwLoop) signal handler cb = do
     handlerP <- $(C.mkFunPtr [t|SignalHandlerRaw|]) handlerWrapper
     [C.exp| void{pw_loop_add_signal($(struct pw_loop* pwLoop), $(int signal), $(void (*handlerP)(void*, int sig)), NULL)} |]
     cb
@@ -27,8 +27,8 @@ type TimerHandler = Word64 -> IO ()
 
 newtype SpaSource = SpaSource (Ptr SpaSourceStruct)
 
-pw_loop_add_timer :: PwLoop -> TimerHandler -> (SpaSource -> IO a) -> IO a
-pw_loop_add_timer (PwLoop pwLoop) handler cb = do
+pw_loop_add_timer :: Loop -> TimerHandler -> (SpaSource -> IO a) -> IO a
+pw_loop_add_timer (Loop pwLoop) handler cb = do
     handlerP <- $(C.mkFunPtr [t|Ptr () -> Word64 -> IO ()|]) handlerWrapper
     timer <-
         SpaSource

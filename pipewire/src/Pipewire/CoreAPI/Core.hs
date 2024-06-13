@@ -13,13 +13,13 @@ C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/core.h>"
 
-newtype PwRegistry = PwRegistry (Ptr PwRegistryStruct)
-newtype PwCore = PwCore (Ptr PwCoreStruct)
+newtype Registry = Registry (Ptr PwRegistryStruct)
+newtype Core = Core (Ptr PwCoreStruct)
 
-newtype PwCoreInfo = PwCoreInfo (Ptr PwCoreInfoStruct)
-newtype PwCoreEvents = PwCoreEvents (Ptr PwCoreEventsStruct)
+newtype CoreInfo = CoreInfo (Ptr PwCoreInfoStruct)
+newtype CoreEvents = CoreEvents (Ptr PwCoreEventsStruct)
 
-type InfoHandler = PwCoreInfo -> IO ()
+type InfoHandler = CoreInfo -> IO ()
 type InfoHandlerRaw = Ptr () -> Ptr PwCoreInfoStruct -> IO ()
 
 type DoneHandler = PwID -> SeqID -> IO ()
@@ -29,7 +29,7 @@ type ErrorHandler = PwID -> SeqID -> Int -> Text -> IO ()
 type ErrorHandlerRaw = Ptr () -> Word32 -> CInt -> CInt -> CString -> IO ()
 
 -- | Create a local pw_core_events structure
-withCoreEvents :: InfoHandler -> DoneHandler -> ErrorHandler -> (PwCoreEvents -> IO b) -> IO b
+withCoreEvents :: InfoHandler -> DoneHandler -> ErrorHandler -> (CoreEvents -> IO b) -> IO b
 withCoreEvents infoHandler doneHandler errorHandler cb = allocaBytes
     (fromIntegral size)
     \p -> do
@@ -43,12 +43,12 @@ withCoreEvents infoHandler doneHandler errorHandler cb = allocaBytes
                 pre->done = $(void (*doneP)(void*, uint32_t id, int seq));
                 pre->error = $(void (*errorP)(void*, uint32_t id, int seq, int res, const char* message));
         }|]
-        cb (PwCoreEvents p) `finally` do
+        cb (CoreEvents p) `finally` do
             freeHaskellFunPtr infoP
             freeHaskellFunPtr doneP
             freeHaskellFunPtr errorP
   where
-    infoWrapper _data info = infoHandler (PwCoreInfo info)
+    infoWrapper _data info = infoHandler (CoreInfo info)
     doneWrapper _data id' seq' = doneHandler (PwID $ fromIntegral id') (SeqID $ fromIntegral seq')
     errorWrapper _data id' seq' res cMessage = do
         message <- peekCString cMessage
@@ -56,31 +56,31 @@ withCoreEvents infoHandler doneHandler errorHandler cb = allocaBytes
 
     size = [C.pure| size_t {sizeof (struct pw_core_events)} |]
 
-pw_core_add_listener :: PwCore -> SpaHook -> PwCoreEvents -> IO ()
-pw_core_add_listener (PwCore core) (SpaHook hook) (PwCoreEvents pce) =
+pw_core_add_listener :: Core -> SpaHook -> CoreEvents -> IO ()
+pw_core_add_listener (Core core) (SpaHook hook) (CoreEvents pce) =
     [C.exp| void{pw_core_add_listener($(struct pw_core* core), $(struct spa_hook* hook), $(struct pw_core_events* pce), NULL)} |]
 
-pw_core_sync :: PwCore -> PwID -> IO SeqID
-pw_core_sync (PwCore core) (PwID (fromIntegral -> pwid)) =
+pw_core_sync :: Core -> PwID -> IO SeqID
+pw_core_sync (Core core) (PwID (fromIntegral -> pwid)) =
     SeqID . fromIntegral
         <$> [C.exp| int{pw_core_sync($(struct pw_core* core), $(int pwid), 0)} |]
 
 pw_id_core :: PwID
 pw_id_core = PwID $ fromIntegral [C.pure| int{PW_ID_CORE} |]
 
-pw_core_disconnect :: PwCore -> IO ()
-pw_core_disconnect (PwCore core) =
+pw_core_disconnect :: Core -> IO ()
+pw_core_disconnect (Core core) =
     [C.exp| void{pw_core_disconnect($(struct pw_core* core))} |]
 
-pw_core_get_registry :: PwCore -> IO PwRegistry
-pw_core_get_registry (PwCore core) =
-    PwRegistry
+pw_core_get_registry :: Core -> IO Registry
+pw_core_get_registry (Core core) =
+    Registry
         <$> dieOnNull
             "pw_core_get_registry"
             [C.exp| struct pw_registry*{pw_core_get_registry($(struct pw_core* core), PW_VERSION_REGISTRY, 0)} |]
 
-pw_core_create_object :: PwCore -> Text -> Text -> PwVersion -> PwProperties -> IO PwProxy
-pw_core_create_object (PwCore core) factoryName typeName (PwVersion (fromIntegral -> version)) (PwProperties props) =
+pw_core_create_object :: Core -> Text -> Text -> PwVersion -> PwProperties -> IO PwProxy
+pw_core_create_object (Core core) factoryName typeName (PwVersion (fromIntegral -> version)) (PwProperties props) =
     withCString factoryName \cFactoryName ->
         withCString typeName \cType ->
             PwProxy

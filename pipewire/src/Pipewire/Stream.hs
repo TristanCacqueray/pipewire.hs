@@ -6,8 +6,8 @@ import Data.Vector.Storable qualified as SV
 import Foreign (Storable (..), castPtr)
 
 import Pipewire.CContext
-import Pipewire.CoreAPI.Core (PwCore (..))
-import Pipewire.CoreAPI.Loop (PwLoop (..))
+import Pipewire.CoreAPI.Core (Core (..))
+import Pipewire.CoreAPI.Loop (Loop (..))
 import Pipewire.Prelude
 import Pipewire.Protocol
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), withSpaHook)
@@ -64,7 +64,7 @@ withAudioHandlers pwStream@(PwStream s) onProcess cb =
   where
     onProcessWrapper _data = onProcess pwStream
 
-withAudioStream :: PwCore -> OnProcessHandler -> (PwStream -> IO a) -> IO a
+withAudioStream :: Core -> OnProcessHandler -> (PwStream -> IO a) -> IO a
 withAudioStream pwCore onProcess cb = do
     props <-
         PwProperties
@@ -132,8 +132,8 @@ writeAudioFrame (PwBuffer pwBuffer) (cfloatVector -> samples) = do
         *dst++ = $vec-ptr:(float *samples)[i] * 32767.0;
     }|]
 
-pw_stream_new_simple :: PwLoop -> Text -> PwProperties -> PwStreamEvents -> Ptr () -> IO PwStream
-pw_stream_new_simple (PwLoop pwLoop) name (PwProperties props) (PwStreamEvents pwStreamEvents) (castPtr -> dataPtr) =
+pw_stream_new_simple :: Loop -> Text -> PwProperties -> PwStreamEvents -> Ptr () -> IO PwStream
+pw_stream_new_simple (Loop pwLoop) name (PwProperties props) (PwStreamEvents pwStreamEvents) (castPtr -> dataPtr) =
     withCString name \nameC -> do
         PwStream
             <$> dieOnNull
@@ -147,8 +147,8 @@ pw_stream_new_simple (PwLoop pwLoop) name (PwProperties props) (PwStreamEvents p
                        $(void* dataPtr))
                }|]
 
-pw_stream_new :: PwCore -> Text -> PwProperties -> IO PwStream
-pw_stream_new (PwCore pwCore) name (PwProperties props) =
+pw_stream_new :: Core -> Text -> PwProperties -> IO PwStream
+pw_stream_new (Core pwCore) name (PwProperties props) =
     withCString name \nameC ->
         PwStream
             <$> dieOnNull

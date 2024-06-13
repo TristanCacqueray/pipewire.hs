@@ -12,18 +12,18 @@ import Pipewire.Protocol
 #include <pipewire/pipewire.h>
 #include <pipewire/module.h>
 
-newtype PwLinkState = PwLinkState CInt
+newtype LinkState = LinkState CInt
   deriving newtype (Storable, Show)
   deriving stock (Eq)
 
 -- /* awk '/PW_LINK_STATE/ { print "pattern " $1 " = (#const " $1 ")" }' pipewire/*.h */
-pattern PW_LINK_STATE_ERROR = PwLinkState (#const PW_LINK_STATE_ERROR)
-pattern PW_LINK_STATE_UNLINKED = PwLinkState (#const PW_LINK_STATE_UNLINKED)
-pattern PW_LINK_STATE_INIT = PwLinkState (#const PW_LINK_STATE_INIT)
-pattern PW_LINK_STATE_NEGOTIATING = PwLinkState (#const PW_LINK_STATE_NEGOTIATING)
-pattern PW_LINK_STATE_ALLOCATING = PwLinkState (#const PW_LINK_STATE_ALLOCATING)
-pattern PW_LINK_STATE_PAUSED = PwLinkState (#const PW_LINK_STATE_PAUSED)
-pattern PW_LINK_STATE_ACTIVE = PwLinkState (#const PW_LINK_STATE_ACTIVE)
+pattern PW_LINK_STATE_ERROR = LinkState (#const PW_LINK_STATE_ERROR)
+pattern PW_LINK_STATE_UNLINKED = LinkState (#const PW_LINK_STATE_UNLINKED)
+pattern PW_LINK_STATE_INIT = LinkState (#const PW_LINK_STATE_INIT)
+pattern PW_LINK_STATE_NEGOTIATING = LinkState (#const PW_LINK_STATE_NEGOTIATING)
+pattern PW_LINK_STATE_ALLOCATING = LinkState (#const PW_LINK_STATE_ALLOCATING)
+pattern PW_LINK_STATE_PAUSED = LinkState (#const PW_LINK_STATE_PAUSED)
+pattern PW_LINK_STATE_ACTIVE = LinkState (#const PW_LINK_STATE_ACTIVE)
 
 -- /* awk '/#define PW_VERSION_/ { print "m" $2 " :: PwVersion"; print "m" $2 " = PwVersion (#const " $2 ")"; print "" }' pipewire/link.h pipewire/client.h */
 mPW_VERSION_LINK :: PwVersion
