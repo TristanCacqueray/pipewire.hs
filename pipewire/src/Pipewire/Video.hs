@@ -7,22 +7,19 @@ module Pipewire.Video where
 import Foreign (castPtr)
 import Language.C.Inline qualified as C
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.CoreAPI.Core (PwCore)
 import Pipewire.CoreAPI.Loop (SpaSource (..), pw_loop_add_timer)
 import Pipewire.CoreAPI.MainLoop (PwMainLoop (..), pw_main_loop_get_loop)
 import Pipewire.Enum
 import Pipewire.Prelude
-import Pipewire.SPA.CContext (SpaPodStruct)
-import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.POD (SpaPod (..))
 import Pipewire.SPA.Parameters
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), withSpaHook)
 import Pipewire.Stream
-import Pipewire.Utilities.CContext qualified as Utils
 import Pipewire.Utilities.Properties (PwProperties (..))
 
-C.context (C.baseCtx <> pwContext <> C.vecCtx <> SPAUtils.pwContext <> Utils.pwContext)
+C.context (C.baseCtx <> C.vecCtx <> pwContext)
 
 C.include "<math.h>"
 C.include "<spa/param/video/format-utils.h>"

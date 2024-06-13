@@ -3,16 +3,15 @@ module Pipewire.CoreAPI.Link where
 import Foreign (castPtr)
 import Language.C.Inline qualified as C
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.CoreAPI.Core
 import Pipewire.CoreAPI.Proxy
 import Pipewire.Enum
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..))
-import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.Utilities.Properties (PwProperties, pw_properties_new, pw_properties_set_id, pw_properties_set_linger)
 
-C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)
+C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/link.h>"
 

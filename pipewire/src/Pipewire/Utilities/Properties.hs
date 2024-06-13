@@ -2,13 +2,12 @@ module Pipewire.Utilities.Properties where
 
 import Language.C.Inline qualified as C
 
+import Pipewire.CContext
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..))
-import Pipewire.SPA.CContext qualified as SPA
 import Pipewire.SPA.Utilities.Dictionary (SpaDict (..))
-import Pipewire.Utilities.CContext
 
-C.context (C.baseCtx <> pwContext <> SPA.pwContext)
+C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/properties.h>"
 C.include "<pipewire/keys.h>"

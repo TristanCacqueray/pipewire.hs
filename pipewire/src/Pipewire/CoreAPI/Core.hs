@@ -2,16 +2,14 @@ module Pipewire.CoreAPI.Core where
 
 import Language.C.Inline qualified as C
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.CoreAPI.Proxy
 import Pipewire.Prelude
 import Pipewire.Protocol
-import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..))
-import Pipewire.Utilities.CContext qualified as Utils
 import Pipewire.Utilities.Properties (PwProperties (..))
 
-C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext <> Utils.pwContext)
+C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/core.h>"
 

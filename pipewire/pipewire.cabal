@@ -42,7 +42,7 @@ library
   -- cabal-gild: discover src
   exposed-modules:
     Pipewire
-    Pipewire.CoreAPI.CContext
+    Pipewire.CContext
     Pipewire.CoreAPI.Context
     Pipewire.CoreAPI.Core
     Pipewire.CoreAPI.Initialization
@@ -57,13 +57,11 @@ library
     Pipewire.Prelude
     Pipewire.Protocol
     Pipewire.SPA.Buffers
-    Pipewire.SPA.CContext
     Pipewire.SPA.POD
     Pipewire.SPA.Parameters
     Pipewire.SPA.Utilities.Dictionary
     Pipewire.SPA.Utilities.Hooks
     Pipewire.Stream
-    Pipewire.Utilities.CContext
     Pipewire.Utilities.Properties
     Pipewire.Video
 

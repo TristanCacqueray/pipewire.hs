@@ -2,8 +2,8 @@ module Pipewire.SPA.Utilities.Hooks where
 
 import Language.C.Inline qualified as C
 
+import Pipewire.CContext
 import Pipewire.Prelude
-import Pipewire.SPA.CContext
 
 C.context (C.baseCtx <> pwContext)
 

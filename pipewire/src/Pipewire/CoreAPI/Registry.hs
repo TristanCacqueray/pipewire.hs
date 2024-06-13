@@ -2,22 +2,21 @@ module Pipewire.CoreAPI.Registry where
 
 import Language.C.Inline qualified as C
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.CoreAPI.Core (PwRegistry (..))
 import Pipewire.Prelude
 import Pipewire.Protocol
-import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Dictionary (SpaDict (..))
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..))
 
-C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)
+C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/core.h>"
 
 newtype PwRegistryEvents = PwRegistryEvents (Ptr PwRegistryEventsStruct)
 
 type GlobalHandler = PwID -> Text -> PwVersion -> SpaDict -> IO ()
-type GlobalHandlerRaw = Ptr () -> Word32 -> Word32 -> CString -> Word32 -> Ptr SPAUtils.SpaDictStruct -> IO ()
+type GlobalHandlerRaw = Ptr () -> Word32 -> Word32 -> CString -> Word32 -> Ptr SpaDictStruct -> IO ()
 
 type GlobalRemoveHandler = PwID -> IO ()
 type GlobalRemoveHandlerRaw = Ptr () -> Word32 -> IO ()

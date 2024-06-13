@@ -2,7 +2,7 @@ module Pipewire.CoreAPI.Context where
 
 import Language.C.Inline qualified as C
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.CoreAPI.Core (PwCore (..))
 import Pipewire.CoreAPI.Loop (PwLoop (..))
 import Pipewire.Prelude

@@ -3,7 +3,7 @@ module Pipewire.CoreAPI.Loop where
 import Language.C.Inline qualified as C
 import System.Posix.Signals (Signal)
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.Prelude
 
 C.context (C.baseCtx <> pwContext)

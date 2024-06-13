@@ -2,12 +2,11 @@ module Pipewire.CoreAPI.Proxy where
 
 import Language.C.Inline qualified as C
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.Prelude
-import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), withSpaHook)
 
-C.context (C.baseCtx <> pwContext <> SPAUtils.pwContext)
+C.context (C.baseCtx <> pwContext)
 
 C.include "<pipewire/proxy.h>"
 

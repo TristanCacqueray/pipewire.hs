@@ -2,7 +2,7 @@ module Pipewire.CoreAPI.MainLoop where
 
 import Language.C.Inline qualified as C
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.CoreAPI.Loop (PwLoop (..), SignalHandlerRaw)
 import Pipewire.Prelude
 

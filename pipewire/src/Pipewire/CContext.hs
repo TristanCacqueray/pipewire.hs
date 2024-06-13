@@ -1,9 +1,11 @@
-module Pipewire.CoreAPI.CContext where
+-- | Internal module for the inline-c structure mapping
+module Pipewire.CContext where
 
 import Data.Map.Strict qualified as Map
 import Language.C.Inline.Context (Context (..))
 import Language.C.Types
 
+-- CoreAPI
 data PwLoopStruct
 data PwMainLoopStruct
 data PwContextStruct
@@ -24,6 +26,17 @@ data PwStreamEventsStruct
 data PwBufferStruct
 
 data SpaSourceStruct
+
+-- SPA
+data SpaHookStruct
+data SpaDictStruct
+data SpaBufferStruct
+
+data SpaPodStruct
+data SpaVideoInfoRawStruct
+
+-- Utilities
+data PwPropertiesStruct
 
 pwContext :: Context
 pwContext =
@@ -46,5 +59,11 @@ pwContext =
                 , (Struct "pw_stream_events", [t|PwStreamEventsStruct|])
                 , (Struct "pw_buffer", [t|PwBufferStruct|])
                 , (Struct "spa_source", [t|SpaSourceStruct|])
+                , (Struct "spa_hook", [t|SpaHookStruct|])
+                , (Struct "spa_dict", [t|SpaDictStruct|])
+                , (Struct "spa_buffer", [t|SpaBufferStruct|])
+                , (Struct "spa_pod", [t|SpaPodStruct|])
+                , (Struct "spa_video_info_raw", [t|SpaVideoInfoRawStruct|])
+                , (Struct "pw_properties", [t|PwPropertiesStruct|])
                 ]
         }

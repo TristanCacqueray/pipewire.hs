@@ -5,14 +5,12 @@ import Language.C.Inline qualified as C
 import Data.Vector.Storable qualified as SV
 import Foreign (Storable (..), castPtr)
 
-import Pipewire.CoreAPI.CContext
+import Pipewire.CContext
 import Pipewire.CoreAPI.Core (PwCore (..))
 import Pipewire.CoreAPI.Loop (PwLoop (..))
 import Pipewire.Prelude
 import Pipewire.Protocol
-import Pipewire.SPA.CContext qualified as SPAUtils
 import Pipewire.SPA.Utilities.Hooks (SpaHook (..), withSpaHook)
-import Pipewire.Utilities.CContext qualified as Utils
 import Pipewire.Utilities.Properties (PwProperties (..))
 
 newtype PwStream = PwStream (Ptr PwStreamStruct) deriving newtype (Storable)
@@ -20,7 +18,7 @@ newtype PwStreamEvents = PwStreamEvents (Ptr PwStreamEventsStruct)
 newtype PwStreamData = PwStreamData (Ptr (Ptr PwStreamStruct))
 newtype PwBuffer = PwBuffer (Ptr PwBufferStruct)
 
-C.context (C.baseCtx <> pwContext <> C.vecCtx <> SPAUtils.pwContext <> Utils.pwContext)
+C.context (C.baseCtx <> C.vecCtx <> pwContext)
 
 C.include "<pipewire/stream.h>"
 C.include "<pipewire/keys.h>"
