@@ -4,7 +4,7 @@ import Pipewire qualified as PW
 
 main :: IO ()
 main = PW.withInstance () printEvent \pwInstance -> do
-    print =<< PW.pw_main_loop_run pwInstance.mainLoop
+    PW.pw_main_loop_run pwInstance.mainLoop
   where
     printEvent _ ev _ = do
         case ev of

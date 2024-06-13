@@ -29,19 +29,20 @@ main =
     go options = PW.withLinkInstance \pwInstance -> do
         case options of
             List listKind -> do
-                PW.syncState_ pwInstance \simpleRegistry ->
+                PW.syncState_ pwInstance >>= \simpleRegistry ->
                     case listKind of
                         Inputs -> mapM_ print $ IDMap.toList simpleRegistry.inputs
                         Outputs -> mapM_ print $ IDMap.toList simpleRegistry.outputs
                         Links -> mapM_ print $ IDMap.toList simpleRegistry.links
                         Nodes -> mapM_ print $ IDMap.toList simpleRegistry.nodes
             DeleteLink pwid -> do
-                isLink <- PW.syncState_ pwInstance \simpleRegistry ->
-                    pure . isJust $ IDMap.lookup pwid simpleRegistry.links
+                isLink <-
+                    PW.syncState_ pwInstance >>= \simpleRegistry ->
+                        pure . isJust $ IDMap.lookup pwid simpleRegistry.links
                 if isLink
                     then do
                         PW.pw_registry_destroy pwInstance.registry pwid
-                        PW.syncState_ pwInstance \_ -> putStrLn "Link removed"
+                        PW.syncState_ pwInstance >> putStrLn "Link removed"
                     else putStrLn $ show pwid <> " is not a link!"
             Connect out inp -> do
                 -- TODO: check out/inp are ports and that the links doesn't already exist
@@ -50,10 +51,11 @@ main =
                         Just err -> print err
                         Nothing -> putStrLn "Done."
             LinkNode source sink -> do
-                (sourceID, sinkID) <- PW.syncState_ pwInstance \reg ->
-                    case (PW.findNode source reg, PW.findNode sink reg) of
-                        (Just oid, Just iid) -> pure (fst oid, fst iid)
-                        res -> error $ "Could not find: " <> show res
+                (sourceID, sinkID) <-
+                    PW.syncState_ pwInstance >>= \reg ->
+                        case (PW.findNode source reg, PW.findNode sink reg) of
+                            (Just oid, Just iid) -> pure (fst oid, fst iid)
+                            res -> error $ "Could not find: " <> show res
                 print =<< PW.linkNodes sourceID sinkID pwInstance
                 putStrLn "Exit to disconnect..."
                 print =<< PW.runInstance pwInstance

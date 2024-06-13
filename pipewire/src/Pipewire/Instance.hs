@@ -92,7 +92,7 @@ getLinkablePorts source sink reg =
 
 linkNodes :: PW.PwID -> PW.PwID -> PW.PwInstance LinksRegistry -> IO LinkResult
 linkNodes source sink pwInstance =
-    PW.syncState pwInstance \case
+    PW.syncState pwInstance >>= \case
         Left err -> pure $ LinkFailed err
         Right reg -> case (getNodeOutputs source reg, getNodeInputs sink reg) of
             ([(out, _)], [(inp, _)]) -> PW.withLink pwInstance.core (PW.LinkProperties out inp False) \pwLink -> do

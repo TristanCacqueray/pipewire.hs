@@ -75,7 +75,7 @@ where
 import Control.Exception (bracket, bracket_)
 import Language.C.Inline qualified as C
 
-import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar, withMVar)
+import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -144,7 +144,7 @@ data RegistryEvent = Added PwID Text SpaDict | Removed PwID
 -- | Run the main loop
 runInstance :: PwInstance state -> IO (Maybe (NonEmpty CoreError))
 runInstance pwInstance = do
-    void $ pw_main_loop_run pwInstance.mainLoop
+    pw_main_loop_run pwInstance.mainLoop
     getErrors pwInstance
 
 readState :: PwInstance state -> IO state
@@ -154,30 +154,29 @@ readState pwInstance = readMVar pwInstance.stateVar
 quitInstance :: PwInstance state -> IO ()
 quitInstance pwInstance = void $ pw_main_loop_quit pwInstance.mainLoop
 
-{- | Like 'syncState' but throwing an error if there was any pipewire error.
-Do not call from a handler!
--}
-syncState_ :: PwInstance state -> (state -> IO a) -> IO a
-syncState_ pwInstance cb = syncState pwInstance \case
-    Left errs -> mapM_ print errs >> error "pw core failed"
-    Right state -> cb state
+-- | Like 'syncState' but throwing an error if there was any pipewire error.
+syncState_ :: PwInstance state -> IO state
+syncState_ pwInstance =
+    syncState pwInstance >>= \case
+        Left errs -> mapM_ print errs >> error "pw core failed"
+        Right state -> pure state
 
 getErrors :: PwInstance state -> IO (Maybe (NonEmpty CoreError))
 getErrors pwInstance = NE.nonEmpty <$> readMVar pwInstance.errorsVar
 
 {- | Ensure all the events have been processed and access the state.
-Do not call from a handler!
+Do not call when the loop is runnning!
 -}
-syncState :: PwInstance state -> (Either (NonEmpty CoreError) state -> IO a) -> IO a
-syncState pwInstance cb = do
+syncState :: PwInstance state -> IO (Either (NonEmpty CoreError) state)
+syncState pwInstance = do
     -- Write the expected SeqID so that the core handler stop the loop
     writeIORef pwInstance.sync =<< pw_core_sync pwInstance.core pw_id_core
     -- Start the loop
     pw_main_loop_run pwInstance.mainLoop
     -- Call back with the finalized state
     getErrors pwInstance >>= \case
-        Just errs -> cb (Left errs)
-        Nothing -> withMVar pwInstance.stateVar (cb . Right)
+        Just errs -> pure (Left errs)
+        Nothing -> Right <$> readState pwInstance
 
 -- | Create a new 'PwInstance' by providing an initial state and a registry update handler.
 withInstance :: state -> (PwInstance state -> RegistryEvent -> state -> IO state) -> (PwInstance state -> IO a) -> IO a
@@ -209,6 +208,9 @@ withInstance initialState updateState cb =
         when (pending == seqid) do
             void $ pw_main_loop_quit mainLoop
 
+{- |
+Do not call when the loop is runnning!
+-}
 waitForLink :: Link -> PwInstance state -> IO (Maybe (NonEmpty CoreError))
 waitForLink pwLink pwInstance = do
     let abort msg = putStrLn msg >> quitInstance pwInstance
