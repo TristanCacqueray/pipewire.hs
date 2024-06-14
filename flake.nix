@@ -1,13 +1,11 @@
 {
-  description = "pw-controller";
+  description = "pipewire.hs";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs";
 
   outputs = { self, nixpkgs }:
     let
       inherit (nixpkgs) lib;
-
-      name = "pw-controller";
 
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -18,8 +16,8 @@
 
       # The haskell package set override
       haskellExtend = hpFinal: hpPrev: {
-        ${name} = hpPrev.callCabal2nix name ./. { };
-        "pipewire" = hpPrev.callCabal2nixWithOptions "pipewire" ./pipewire
+        pw-controller = hpPrev.callCabal2nix "pw-controller" ./pw-controller { };
+        pipewire = hpPrev.callCabal2nixWithOptions "pipewire" ./pipewire
           "--flag=examples" { libpipewire = pkgs.pipewire; };
       };
       ciTools = [ pkgs.cabal-install pkgs.haskellPackages.fourmolu pkgs.hlint ];
@@ -62,7 +60,7 @@
       };
 
       devShells.${system}.default = pkgs.haskellPackages.shellFor {
-        packages = p: [ p.${name} p.pipewire ];
+        packages = p: [ p.pw-controller p.pipewire ];
         buildInputs = ciTools ++ devTools;
       };
     };
