@@ -18,7 +18,7 @@ import Foreign
 import Foreign.C.Types (CInt)
 
 import Pipewire qualified as PW
-import Pipewire.Instance qualified as PW
+import Pipewire.RegistryState qualified as PW
 import Pipewire.Video qualified as PW
 
 main :: IO ()
@@ -72,7 +72,7 @@ rgb r g b =
     a = 0xff
 
 -- | The node-id of the sink, to be started separately.
-getSinkNode :: PW.LinksRegistry -> Either String PW.PwID
+getSinkNode :: PW.RegistryState -> Either String PW.PwID
 getSinkNode reg = case PW.findNode "video-sink" reg of
     Nothing -> Left $ "Start the sink with:\n " <> sinkCommand
     Just (nodeID, _) -> Right nodeID
@@ -80,7 +80,7 @@ getSinkNode reg = case PW.findNode "video-sink" reg of
     sinkCommand = "gst-launch-1.0 pipewiresrc autoconnect=0 client-name=video-sink ! videoconvert ! autovideosink"
 
 -- | This wrapper automatically connects the node-id when the port is added to the registry.
-withAutoConnect :: (IORef (Maybe PW.PwID) -> PW.PwInstance PW.LinksRegistry -> IO a) -> IO a
+withAutoConnect :: (IORef (Maybe PW.PwID) -> PW.PwInstance PW.RegistryState -> IO a) -> IO a
 withAutoConnect cb = do
     -- TODO: quit the loop if the link state is error?
     let linkInfoHandler _pwid linkStatus = do
@@ -114,7 +114,7 @@ withAutoConnect cb = do
 
             -- When a new port is added, try to connect the sink
             updateState pwInstance ev state = do
-                reg <- PW.updateLinksRegistry ev state
+                reg <- PW.updateRegistryState ev state
                 case ev of
                     PW.Added _ "PipeWire:Interface:Port" _ -> do
                         readIORef nodeIDRef >>= \case
@@ -125,4 +125,4 @@ withAutoConnect cb = do
                 pure reg
 
         -- Setup the instance and call the closure.
-        PW.withInstance PW.initialLinksRegistry updateState (cb nodeIDRef)
+        PW.withInstance PW.initialRegistryState updateState (cb nodeIDRef)

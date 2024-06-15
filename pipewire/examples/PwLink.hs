@@ -8,7 +8,7 @@ import Text.Read (readMaybe)
 
 import Pipewire qualified as PW
 import Pipewire.IDMap qualified as IDMap
-import Pipewire.Instance qualified as PW
+import Pipewire.RegistryState qualified as PW
 
 data ListKind = Inputs | Outputs | Links | Nodes
 

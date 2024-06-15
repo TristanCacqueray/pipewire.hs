@@ -1,5 +1,5 @@
 -- | A high level API for managing links
-module Pipewire.Instance where
+module Pipewire.RegistryState where
 
 import Data.Text (Text)
 
@@ -8,27 +8,30 @@ import Pipewire qualified as PW
 import Pipewire.IDMap (IDMap)
 import Pipewire.IDMap qualified as IDMap
 
-withLinkInstance :: (PW.PwInstance LinksRegistry -> IO a) -> IO a
-withLinkInstance = PW.withInstance initialLinksRegistry (const updateLinksRegistry)
+withLinkInstance :: (PW.PwInstance RegistryState -> IO a) -> IO a
+withLinkInstance = PW.withInstance initialRegistryState (const updateRegistryState)
 
--- | For pw-link, we are only interested in the ports and the links
-data LinksRegistry = LinksRegistry
+-- | The registry state, to be maintained with the 'RegistryEvent'
+data RegistryState = RegistryState
     { outputs :: IDMap Port
     , inputs :: IDMap Port
     , links :: IDMap (PW.PwID, PW.PwID)
     , nodes :: IDMap Node
     }
 
-findNode :: Text -> LinksRegistry -> Maybe (PW.PwID, Node)
+initialRegistryState :: RegistryState
+initialRegistryState = RegistryState mempty mempty mempty mempty
+
+findNode :: Text -> RegistryState -> Maybe (PW.PwID, Node)
 findNode name reg = IDMap.find (\(Node nodeName) -> name == nodeName) reg.nodes
 
-getNodeOutputs :: PW.PwID -> LinksRegistry -> [(PW.PwID, Port)]
-getNodeOutputs pwid reg = IDMap.keep (\(Port _ nodeID) -> pwid == nodeID) reg.outputs
+getNodeOutputs :: PW.PwID -> RegistryState -> [(PW.PwID, Port)]
+getNodeOutputs pwid reg = IDMap.keep (\port -> pwid == port.nodeID) reg.outputs
 
-getNodeInputs :: PW.PwID -> LinksRegistry -> [(PW.PwID, Port)]
-getNodeInputs pwid reg = IDMap.keep (\(Port _ nodeID) -> pwid == nodeID) reg.inputs
+getNodeInputs :: PW.PwID -> RegistryState -> [(PW.PwID, Port)]
+getNodeInputs pwid reg = IDMap.keep (\port -> pwid == port.nodeID) reg.inputs
 
-getLinkFrom :: PW.PwID -> LinksRegistry -> [(PW.PwID, PW.PwID)]
+getLinkFrom :: PW.PwID -> RegistryState -> [(PW.PwID, PW.PwID)]
 getLinkFrom pwid reg =
     map (\(linkid, (_out, inp)) -> (linkid, inp)) $
         IDMap.keep (\(out, _inp) -> pwid == out) reg.links
@@ -42,12 +45,9 @@ data Port = Port
 newtype Node = Node Text
     deriving newtype (Show, Eq, Ord)
 
-initialLinksRegistry :: LinksRegistry
-initialLinksRegistry = LinksRegistry mempty mempty mempty mempty
-
--- | Update the 'LinksRegistry' on registry event.
-updateLinksRegistry :: PW.RegistryEvent -> LinksRegistry -> IO LinksRegistry
-updateLinksRegistry ev reg = case ev of
+-- | Update the 'RegistryState' on registry event.
+updateRegistryState :: PW.RegistryEvent -> RegistryState -> IO RegistryState
+updateRegistryState ev reg = case ev of
     PW.Added pwid "PipeWire:Interface:Port" dict -> do
         newPort <-
             (,,)
@@ -84,13 +84,13 @@ data LinkResult
     | LinkSuccess
     deriving (Show)
 
-getLinkablePorts :: PW.PwID -> PW.PwID -> LinksRegistry -> [(PW.PwID, PW.PwID)]
+getLinkablePorts :: PW.PwID -> PW.PwID -> RegistryState -> [(PW.PwID, PW.PwID)]
 getLinkablePorts source sink reg =
     case (getNodeOutputs source reg, getNodeInputs sink reg) of
         ([(out, _)], [(inp, _)]) -> [(out, inp)]
         _ -> []
 
-linkNodes :: PW.PwID -> PW.PwID -> PW.PwInstance LinksRegistry -> IO LinkResult
+linkNodes :: PW.PwID -> PW.PwID -> PW.PwInstance RegistryState -> IO LinkResult
 linkNodes source sink pwInstance =
     PW.syncState pwInstance >>= \case
         Left err -> pure $ LinkFailed err

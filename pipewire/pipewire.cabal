@@ -53,9 +53,9 @@ library
     Pipewire.CoreAPI.Registry
     Pipewire.Enum
     Pipewire.IDMap
-    Pipewire.Instance
     Pipewire.Prelude
     Pipewire.Protocol
+    Pipewire.RegistryState
     Pipewire.SPA.Buffers
     Pipewire.SPA.POD
     Pipewire.SPA.Parameters
