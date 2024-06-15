@@ -1,0 +1,77 @@
+Right
+    [ Connect
+        { direction = Input
+        , target = Target
+            { kind = Port
+            , matcher = r"sink"
+            }
+        , with = Target
+            { kind = Port
+            , matcher = r"source"
+            }
+        , redirect = Nothing
+        }
+    , When
+        { condition = DeviceMatcher "^a regex:.*$"
+        , body =
+            [ Connect
+                { direction = Input
+                , target = Target
+                    { kind = Port
+                    , matcher = r"sink"
+                    }
+                , with = Target
+                    { kind = Port
+                    , matcher = r"source"
+                    }
+                , redirect = Nothing
+                }
+            ]
+        }
+    , When
+        { condition = DeviceMatcher r"top-level"
+        , body =
+            [ When
+                { condition = DeviceMatcher r"nested"
+                , body =
+                    [ Connect
+                        { direction = Output
+                        , target = Target
+                            { kind = Port
+                            , matcher = r"source"
+                            }
+                        , with = Target
+                            { kind = Port
+                            , matcher = r"sink"
+                            }
+                        , redirect = Nothing
+                        }
+                    ]
+                }
+            , Connect
+                { direction = InOut
+                , target = Target
+                    { kind = Port
+                    , matcher = r"src"
+                    }
+                , with = Target
+                    { kind = Port
+                    , matcher = r"sink"
+                    }
+                , redirect = Nothing
+                }
+            ]
+        }
+    , Connect
+        { direction = Output
+        , target = Target
+            { kind = Port
+            , matcher = r"a raw match"
+            }
+        , with = Target
+            { kind = Port
+            , matcher = r"end"
+            }
+        , redirect = Nothing
+        }
+    ]

@@ -48,13 +48,22 @@ library
   -- cabal-gild: discover src
   exposed-modules:
     PwConstraint
+    PwController.Eval
+    PwController.Expr
+    PwController.Matcher
+    PwController.NodePorts
+    PwController.Parser
     PwMonParser
     PwState
+
   build-depends:
     attoparsec,
     bytestring,
     containers,
+    megaparsec,
     pcre-light,
+    pipewire,
+    regex-tdfa,
     rio,
     text,
 
@@ -71,3 +80,17 @@ executable pw-controller
     streaming-bytestring,
     text,
     typed-process,
+
+test-suite test-pw-controller
+  import: common
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Spec.hs
+  build-depends:
+    pipewire,
+    pretty-simple <5,
+    pw-controller,
+    tasty <1.5,
+    tasty-golden <2.4,
+    tasty-hunit <2,
+    text,

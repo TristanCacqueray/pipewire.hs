@@ -1,0 +1,14 @@
+Right
+    [ When
+        { condition = DeviceMatcher "Sennheiser USB headset"
+        , body =
+            [ Disconnect
+                { direction = Output
+                , target = Target
+                    { kind = Device
+                    , matcher = re"^sof-hda-dsp$"
+                    }
+                }
+            ]
+        }
+    ]
