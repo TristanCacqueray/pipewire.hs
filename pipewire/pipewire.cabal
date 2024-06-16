@@ -50,6 +50,7 @@ library
     Pipewire.CoreAPI.Link
     Pipewire.CoreAPI.Loop
     Pipewire.CoreAPI.MainLoop
+    Pipewire.CoreAPI.Node
     Pipewire.CoreAPI.Proxy
     Pipewire.CoreAPI.Registry
     Pipewire.Enum

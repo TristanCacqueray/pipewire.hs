@@ -21,6 +21,9 @@ data PwProxyEventsStruct
 data PwLinkEventsStruct
 data PwLinkInfoStruct
 
+data PwNodeEventsStruct
+data PwNodeInfoStruct
+
 data PwStreamStruct
 data PwStreamEventsStruct
 data PwBufferStruct
@@ -53,6 +56,8 @@ pwContext =
                 , (Struct "pw_core_events", [t|PwCoreEventsStruct|])
                 , (Struct "pw_link_info", [t|PwLinkInfoStruct|])
                 , (Struct "pw_link_events", [t|PwLinkEventsStruct|])
+                , (Struct "pw_node_info", [t|PwNodeInfoStruct|])
+                , (Struct "pw_node_events", [t|PwNodeEventsStruct|])
                 , (Struct "pw_proxy_events", [t|PwProxyEventsStruct|])
                 , (Struct "pw_proxy", [t|PwProxyStruct|])
                 , (Struct "pw_stream", [t|PwStreamStruct|])

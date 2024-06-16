@@ -62,3 +62,23 @@ pw_proxy_add_object_listener (PwProxy pwProxy) (SpaHook spaHook) (ProxiedFuncs f
                   $(const void *funcs),
                   NULL);
             }|]
+
+newtype ProxyEvents = ProxyEvents (Ptr PwProxyEventsStruct)
+
+withNodeEvents :: (ProxyEvents -> IO a) -> IO a
+withNodeEvents cb = do
+    allocaBytes
+        (fromIntegral [C.pure| size_t {sizeof (struct pw_proxy_events)} |])
+        \ptr -> do
+            -- TODO: write version number
+            cb (ProxyEvents ptr)
+
+-- Note: the proxy needs to have an allocated spa_hook as user data. See 'Node.bindNode' comment.
+addProxyListener :: PwProxy -> ProxyEvents -> IO ()
+addProxyListener (PwProxy proxy) (ProxyEvents proxyEvents) =
+    [C.block|void{
+    struct pw_proxy* proxy = $(struct pw_proxy* proxy);
+    struct spa_hook* hooks = pw_proxy_get_user_data(proxy);
+
+    pw_proxy_add_listener(proxy, hooks, $(struct pw_proxy_events* proxyEvents), NULL);
+  }|]

@@ -41,6 +41,9 @@ module Pipewire (
     -- ** Loop
     module Pipewire.CoreAPI.Loop,
 
+    -- ** Node
+    module Pipewire.CoreAPI.Node,
+
     -- ** Proxy
     module Pipewire.CoreAPI.Proxy,
 
@@ -85,12 +88,14 @@ import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
 import Pipewire.CoreAPI.Link (Link (..), LinkProperties (..), newLinkProperties, pwLinkEventsFuncs, pw_link_create, withLink, withLinkEvents)
 import Pipewire.CoreAPI.Loop (Loop)
 import Pipewire.CoreAPI.MainLoop (MainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
+import Pipewire.CoreAPI.Node (Node, NodeInfoHandler, withNodeEvents, withNodeInfoHandler)
+import Pipewire.CoreAPI.Node qualified as PwNode
 import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_add_object_listener, pw_proxy_destroy, withProxyEvents)
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, withRegistryEvents)
 import Pipewire.Enum
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
-import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, withSpaDict)
+import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, spaDictSize, withSpaDict)
 import Pipewire.SPA.Utilities.Hooks (SpaHook, withSpaHook)
 import Pipewire.Stream (pw_stream_get_node_id)
 import Pipewire.Utilities.Properties (PwProperties, pw_properties_get, pw_properties_new, pw_properties_new_dict, pw_properties_set, pw_properties_set_id, pw_properties_set_linger)
@@ -137,7 +142,7 @@ data CoreError = CoreError
     deriving (Show)
 
 -- | A registry event
-data RegistryEvent = Added PwID Text SpaDict | Removed PwID
+data RegistryEvent = Added PwID Text SpaDict | Removed PwID | ChangedNode PwID SpaDict
 
 -- TODO: handle pw_main_loop error
 
@@ -191,16 +196,34 @@ withInstance initialState updateState cb =
                     withCoreEvents infoHandler (doneHandler mainLoop sync) (errorHandler errorsVar) \coreEvents -> do
                         withSpaHook \coreListener -> do
                             pw_core_add_listener core coreListener coreEvents
-                            withSpaHook \registryListener -> do
-                                stateVar <- newMVar initialState
-                                registry <- pw_core_get_registry core
-                                let pwInstance = PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
-                                withRegistryEvents (handler pwInstance stateVar) (removeHandler pwInstance stateVar) \registryEvent -> do
-                                    pw_registry_add_listener registry registryListener registryEvent
-                                    cb pwInstance
+
+                            stateVar <- newMVar initialState
+                            registry <- pw_core_get_registry core
+                            let pwInstance = PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
+                            withHandlers pwInstance do
+                                cb pwInstance
   where
-    handler pwInstance stateVar pwid name _ props = modifyMVar_ stateVar (updateState pwInstance $ Added pwid name props)
-    removeHandler pwInstance stateVar pwid = modifyMVar_ stateVar (updateState pwInstance $ Removed pwid)
+    -- Setup registry handlers
+    withHandlers pwInstance go =
+        withSpaHook \registryListener -> do
+            withNodeEvents \nodeEvents -> withNodeInfoHandler (nodeInfoHandler pwInstance) nodeEvents do
+                withRegistryEvents (handler nodeEvents pwInstance) (removeHandler pwInstance) \registryEvent -> do
+                    pw_registry_add_listener pwInstance.registry registryListener registryEvent
+                    go
+
+    nodeInfoHandler pwInstance pwid props = do
+        spaDictSize props >>= \case
+            0 -> pure ()
+            _ -> modifyMVar_ pwInstance.stateVar (updateState pwInstance $ ChangedNode pwid props)
+    handler nodeEvents pwInstance pwid name _ props = do
+        case name of
+            "PipeWire:Interface:Node" -> do
+                node <- PwNode.bindNode pwInstance.registry pwid
+                -- Keep track of node params to get media change
+                PwNode.addNodeListener node nodeEvents
+            _ -> pure ()
+        modifyMVar_ pwInstance.stateVar (updateState pwInstance $ Added pwid name props)
+    removeHandler pwInstance pwid = modifyMVar_ pwInstance.stateVar (updateState pwInstance $ Removed pwid)
     infoHandler _pwinfo = pure ()
     errorHandler errorVar pwid _seq' res msg = modifyMVar_ errorVar (\xs -> pure $ CoreError pwid res msg : xs)
     doneHandler mainLoop sync _pwid seqid = do

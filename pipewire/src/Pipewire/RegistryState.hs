@@ -113,6 +113,7 @@ updateRegistryState ev reg = case ev of
             Just name -> pure $ reg{devices = IDMap.insert pwid (Device name) reg.devices}
             Nothing -> putStrLn "Unknown device" >> pure reg
     PW.Added{} -> pure reg
+    PW.ChangedNode{} -> pure reg
     PW.Removed pwid ->
         pure $
             RegistryState

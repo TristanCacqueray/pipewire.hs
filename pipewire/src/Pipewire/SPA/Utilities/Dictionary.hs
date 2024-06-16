@@ -13,6 +13,9 @@ newtype SpaDict = SpaDict (Ptr SpaDictStruct)
 C.context (C.baseCtx <> C.vecCtx <> pwContext)
 C.include "<spa/utils/dict.h>"
 
+spaDictSize :: SpaDict -> IO Word32
+spaDictSize (SpaDict spaDict) = [C.exp| uint32_t{ $(struct spa_dict* spaDict)->n_items }|]
+
 spaDictLookup :: SpaDict -> Text -> IO (Maybe Text)
 spaDictLookup (SpaDict spaDict) key = withCString key \kPtr -> do
     result <-
