@@ -1,50 +1,55 @@
 -- | The program entry point
 module Main (main) where
 
-import Data.Attoparsec.ByteString.Streaming qualified as AS
-import Data.ByteString qualified as BS hiding (pack)
+import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
 import Options.Applicative qualified as O
 import RIO
 import RIO.FilePath ((</>))
-import RIO.Process qualified as P hiding (proc)
-import Streaming.ByteString.Char8 qualified as Q
 import System.Environment (getEnv)
-import System.Process.Typed qualified as P (proc)
 
-import PwConstraint
-import PwMonParser
-import PwState
+import Pipewire qualified as PW
+import Pipewire.RegistryState
 
+import PwController.Eval
+import PwController.Expr
+import PwController.Parser
+
+doApplyConfig :: Usage Rules -> RegistryState -> UpdateChan -> IO ()
+doApplyConfig usage state updateChan = do
+    putStrLn "\n[*] Applying config..."
+    let actions = applyConfig state usage.config
+    when (null actions) do
+        putStrLn "No action needed"
+    forM_ actions \case
+        AddLink (out, inp) -> do
+            Text.putStrLn $ "Adding link: " <> displayLinkPorts state (out, inp)
+            unless usage.dry do
+                let linger = True
+                PW.withLock updateChan.threadLoop do
+                    PW.withLink updateChan.pwInstance.core (PW.LinkProperties out inp linger) \pwLink ->
+                        PW.waitForLinkAsync pwLink updateChan.threadLoop >>= \case
+                            Nothing -> pure ()
+                            Just (Left err) -> putStrLn $ "Bad link: " <> show err
+                            Just (Right err) -> putStrLn $ "Link failed: " <> show err
+                putStrLn "add link completed"
+        DelLink pwid -> do
+            Text.putStrLn $ "Removing link: " <> displayLink state pwid
+            unless usage.dry do
+                PW.withLock updateChan.threadLoop do
+                    PW.pw_registry_destroy updateChan.pwInstance.registry pwid
+                putStrLn "del link completed"
+        Err e -> putStrLn ("Error: " <> show e)
+
+-- | Monitoring thread
 data UpdateChan = UpdateChan
-    { state :: IORef State
+    { pwInstance :: PW.PwInstance RegistryState
+    , threadLoop :: PW.ThreadLoop
+    , state :: IORef RegistryState
     , baton :: MVar ()
     }
 
-eventsLoop :: Usage any -> UpdateChan -> Q.ByteStream IO () -> IO ()
-eventsLoop usage updateChan = skipInit
-  where
-    skipInit bs = do
-        (intro, rest) <- AS.parse introParser bs
-        case intro of
-            Right _ -> go rest
-            Left err -> print ("Couldn't read the intro" :: Text, err)
-
-    go bs = do
-        (res, rest) <- AS.parse eventParser bs
-        case res of
-            Left err -> putStrLn $ "Event parser failed: " <> show err
-            Right eev -> do
-                case eev of
-                    Left err
-                        | usage.debug -> putStrLn $ "Unknown event: " <> show err
-                        | otherwise -> pure ()
-                    Right ev -> do
-                        modifyIORef' updateChan.state (processEvent ev)
-                        void $ tryPutMVar updateChan.baton ()
-                go rest
-
-controllerLoop :: Usage Constraint -> UpdateChan -> IO ()
+controllerLoop :: Usage Rules -> UpdateChan -> IO ()
 controllerLoop usage updateChan = go
   where
     go = do
@@ -56,51 +61,56 @@ controllerLoop usage updateChan = go
             True -> handleUpdate
     handleUpdate = do
         state <- readIORef updateChan.state
-        let actions = applyConstraints usage.config state
-        when (usage.debug || usage.status) do
-            printBS $ showState state
-        when usage.status do
-            putStrLn "config:"
-            print usage.config
-            case actions of
-                [] -> pure ()
-                xs -> putStrLn "actions:" >> mapM_ print xs
-            exitSuccess
-        forM_ actions \case
-            AddLink link' -> do
-                when (usage.debug || usage.dry) do
-                    putStrLn $ "Adding link: " <> show link'
-                unless usage.dry do addPwLink link'
-            DelLink pwid -> do
-                when (usage.debug || usage.dry) do
-                    putStrLn $ "Removing link: " <> show pwid
-                unless usage.dry do delPwLink pwid
+        doApplyConfig usage state updateChan
         go
 
-mainLoop :: Usage Constraint -> Q.ByteStream IO () -> IO ()
-mainLoop usage bs = do
-    updateChan <- UpdateChan <$> newIORef initialState <*> newEmptyMVar
-    race_ (eventsLoop usage updateChan bs) (controllerLoop usage updateChan)
+withControllerInstance :: (UpdateChan -> RegistryState -> IO a) -> IO a
+withControllerInstance cb = PW.withThreadedInstance initialRegistryState \threadLoop pwInstance -> do
+    syncCompleted <- newIORef False
+    updateChan <- UpdateChan pwInstance threadLoop <$> newIORef initialRegistryState <*> newEmptyMVar
+    let updateState ev = do
+            state <- modifyMVar pwInstance.stateVar \prevState -> do
+                newState <- updateRegistryState ev prevState
+                pure (newState, newState)
+            readIORef syncCompleted >>= \case
+                True -> do
+                    writeIORef updateChan.state state
+                    void $ tryPutMVar updateChan.baton ()
+                _ -> pure ()
+    PW.withRegistryHandler pwInstance updateState do
+        state <- PW.syncState_ pwInstance
+        writeIORef syncCompleted True
+        cb updateChan state
 
-withPwMon :: (Q.ByteStream IO () -> IO ()) -> IO ()
-withPwMon cb = P.withProcessWait procConfig \p -> do
-    cb (Q.fromHandle (P.getStdout p))
-  where
-    procConfig = P.setStdout P.createPipe $ P.proc "pw-mon" ["--hide-params", "--print-separator"]
+mainLoop :: Usage Rules -> IO ()
+mainLoop usage = withControllerInstance \updateChan state -> do
+    when usage.debug do
+        printDebug state usage.config
 
-addPwLink :: (PwID, PwID) -> IO ()
-addPwLink (PwID out, PwID inp) = runPwLink [show out, show inp]
+    -- apply rules on the initial config
+    doApplyConfig usage state updateChan
 
-delPwLink :: PwID -> IO ()
-delPwLink (PwID pwid) = runPwLink ["-d", show pwid]
+    unless usage.oneShot do
+        race_ (controllerLoop usage updateChan) do
+            putStrLn "Running the main loop"
+            print =<< PW.runInstance updateChan.pwInstance
 
-runPwLink :: [String] -> IO ()
-runPwLink = P.runProcess_ . P.proc "pw-link"
+printDebug :: RegistryState -> Rules -> IO ()
+printDebug state config = do
+    Text.putStrLn "\n== initial state =="
+    Text.putStrLn $ displayRegistryState state
+    Text.putStrLn "\n== config matcher =="
+    forM_ (debugTarget state config) \(target, res) -> do
+        Text.putStr $ Text.unwords [Text.pack (show target.kind), Text.pack (show target.matcher)]
+        case res of
+            Left err -> putStrLn $ "  " <> show err
+            Right xs -> putStrLn ":" >> mapM_ (putStrLn . mappend " " . show) xs
 
+-- | Command Line Interface
 data Usage a = Usage
     { debug :: Bool
     , dry :: Bool
-    , status :: Bool
+    , oneShot :: Bool
     , config :: a
     }
 
@@ -109,10 +119,10 @@ usageParser =
     Usage
         <$> O.switch (O.long "debug" <> O.help "Debug internal state")
         <*> O.switch (O.long "dry" <> O.help "Do not apply rules, just show the pw-link commands")
-        <*> O.switch (O.long "status" <> O.help "Print the current state")
+        <*> O.switch (O.long "one-shot" <> O.help "Do not monitor, just apply rules to the current state")
         <*> optional (O.strOption (O.long "config" <> O.metavar "PATH" <> O.help "Config path, default to ~/.config/pw-controller.conf"))
 
-getUsage :: IO (Usage Constraint)
+getUsage :: IO (Usage Rules)
 getUsage = do
     usage <- O.execParser opts
     fp <- case usage.config of
@@ -120,9 +130,8 @@ getUsage = do
             home <- getEnv "HOME"
             pure $ home </> ".config" </> "pw-controller.conf"
         Just fp -> pure fp
-    content <- BS.readFile fp
-    case parseConstraint content of
-        Left e -> error $ fp <> ": " <> show e
+    parseConfig fp >>= \case
+        Left err -> error err
         Right config -> pure $ usage{config}
   where
     opts =
@@ -134,11 +143,5 @@ main :: IO ()
 main = do
     usage <- getUsage
     when usage.debug do
-        print usage.config
-    forever do
-        withPwMon (mainLoop usage)
-        Text.putStrLn "Ooops, restarting..."
-        threadDelay 1_000_000
-
-printBS :: ByteString -> IO ()
-printBS = Text.putStrLn . RIO.decodeUtf8Lenient
+        mapM_ print usage.config
+    mainLoop usage

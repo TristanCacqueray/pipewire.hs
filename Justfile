@@ -16,6 +16,9 @@ doctest-controller:
 test-controller:
   cabal test --enable-tests --test-show-details=direct --test-option=--accept -O0 test-pw-controller
 
+pw-controller *args:
+  cabal run -O0 exe:pw-controller -- {{args}}
+
 example name *args:
   cabal run --flags=examples -O0 exe:{{name}} -- {{args}}
 
@@ -24,3 +27,6 @@ dev target:
 
 doc:
   cabal haddock lib:pipewire
+
+clean:
+  rm -Rf dist-newstyle

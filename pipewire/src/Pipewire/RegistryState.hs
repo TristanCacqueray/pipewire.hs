@@ -178,3 +178,19 @@ linkNodes source sink pwInstance =
                     Just err -> pure $ LinkFailed err
                     Nothing -> pure LinkSuccess
             _ -> pure LinkMissmatched
+
+displayWithPwID :: PW.PwID -> Maybe Text -> Text
+displayWithPwID pwid mText = case mText of
+    Nothing -> pwid'
+    Just text -> mconcat [pwid', ":", text]
+  where
+    pwid' = Text.pack (show pwid)
+
+displayPort :: IDMap Port -> PW.PwID -> Text
+displayPort ports pwid = displayWithPwID pwid $ fmap (.alias) $ IDMap.lookup pwid ports
+
+displayLinkPorts :: RegistryState -> (PW.PwID, PW.PwID) -> Text
+displayLinkPorts state (out, inp) = Text.unwords [displayPort state.outputs out, "->", displayPort state.inputs inp]
+
+displayLink :: RegistryState -> PW.PwID -> Text
+displayLink state pwid = displayWithPwID pwid $ fmap (displayLinkPorts state) $ IDMap.lookup pwid state.links

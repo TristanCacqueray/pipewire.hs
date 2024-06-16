@@ -74,12 +74,10 @@ executable pw-controller
   build-depends:
     bytestring,
     optparse-applicative,
+    pipewire,
     pw-controller,
     rio,
-    streaming-attoparsec,
-    streaming-bytestring,
     text,
-    typed-process,
 
 test-suite test-pw-controller
   import: common
