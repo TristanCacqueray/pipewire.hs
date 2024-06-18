@@ -1,12 +1,82 @@
 Right
     [ When
-        { condition = DeviceMatcher "Sennheiser USB headset"
+        { condition = DeviceMatcher r"MiniFuse 2"
         , body =
-            [ Disconnect
+            [ Connect
+                { direction = Input
+                , target = Target
+                    { kind = Port
+                    , matcher = "^REAPER:in(1|2)$"
+                    }
+                , with = Target
+                    { kind = Port
+                    , matcher = "^MiniFuse 2:capture_(FL|FR)$"
+                    }
+                , redirect = Nothing
+                }
+            , Connect
                 { direction = Output
                 , target = Target
-                    { kind = Device
-                    , matcher = re"^sof-hda-dsp$"
+                    { kind = Port
+                    , matcher = "^REAPER:out(1|2)$"
+                    }
+                , with = Target
+                    { kind = Port
+                    , matcher = "^MiniFuse 2:playback_(FL|FR)$"
+                    }
+                , redirect = Nothing
+                }
+            , Connect
+                { direction = InOut
+                , target = Target
+                    { kind = Port
+                    , matcher = "^REAPER:MIDI .* 1$"
+                    }
+                , with = Target
+                    { kind = Port
+                    , matcher = "^Arturia MicroFreak:.*$"
+                    }
+                , redirect = Nothing
+                }
+            ]
+        }
+    , When
+        { condition = DeviceMatcher r"Sennheiser USB headset"
+        , body =
+            [ Connect
+                { direction = Output
+                , target = Target
+                    { kind = Port
+                    , matcher = "^VLC media player .*:output_(FL|FR)$"
+                    }
+                , with = Target
+                    { kind = Port
+                    , matcher = "^Speaker .*:playback_(FL|FR)$"
+                    }
+                , redirect = Nothing
+                }
+            , Connect
+                { direction = Input
+                , target = Target
+                    { kind = Port
+                    , matcher = "^Sennheiser USB headset:playback_(FL|FR)$"
+                    }
+                , with = Target
+                    { kind = Media
+                    , matcher = "^(Meet .*|.* Jitsi Meet)$"
+                    }
+                , redirect = Just
+                    ( Target
+                        { kind = Port
+                        , matcher = "^Speaker .*:playback_(FL|FR)$"
+                        }
+                    )
+                }
+            , Disconnect
+                { direction = Input
+                , target = Target
+                    { kind = Port
+                    , matcher = "^.*:capture_(FL|FR)$"
                     }
                 }
             ]
