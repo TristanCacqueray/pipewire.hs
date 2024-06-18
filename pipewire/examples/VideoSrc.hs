@@ -12,6 +12,7 @@ link connection there.
 -}
 module Main (main) where
 
+import Control.Concurrent
 import Control.Monad
 import Data.IORef
 import Foreign
@@ -113,7 +114,7 @@ withAutoConnect cb = do
                     _ -> putStrLn "Already connected!"
 
             -- When a new port is added, try to connect the sink
-            updateState pwInstance ev state = do
+            updateState pwInstance ev = modifyMVar_ pwInstance.stateVar \state -> do
                 reg <- PW.updateRegistryState ev state
                 case ev of
                     PW.Added _ "PipeWire:Interface:Port" _ -> do
@@ -125,4 +126,6 @@ withAutoConnect cb = do
                 pure reg
 
         -- Setup the instance and call the closure.
-        PW.withInstance PW.initialRegistryState updateState (cb nodeIDRef)
+        PW.withInstance PW.initialRegistryState \pwInstance ->
+            PW.withRegistryHandler pwInstance (updateState pwInstance) do
+                cb nodeIDRef pwInstance

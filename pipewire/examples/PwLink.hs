@@ -1,7 +1,6 @@
 -- | A minimal pw-link implementation
 module Main (main) where
 
-import Data.Maybe (isJust)
 import Data.Text (Text, pack)
 import System.Environment (getArgs)
 import Text.Read (readMaybe)
@@ -26,24 +25,19 @@ main =
         ["link-node", pack -> source, pack -> sink] -> go $ LinkNode source sink
         _ -> putStrLn "usage: hs-pw-link list (inputs|outputs|links|nodes)|connect out in|disconnect pwid|link-node out in"
   where
-    go options = PW.withLinkInstance \pwInstance -> do
+    go options = PW.withInstanceRegistryState \pwInstance simpleRegistry -> do
         case options of
-            List listKind -> do
-                PW.syncState_ pwInstance >>= \simpleRegistry ->
-                    case listKind of
-                        Inputs -> mapM_ print $ IDMap.toList simpleRegistry.inputs
-                        Outputs -> mapM_ print $ IDMap.toList simpleRegistry.outputs
-                        Links -> mapM_ print $ IDMap.toList simpleRegistry.links
-                        Nodes -> mapM_ print $ IDMap.toList simpleRegistry.nodes
-            DeleteLink pwid -> do
-                isLink <-
-                    PW.syncState_ pwInstance >>= \simpleRegistry ->
-                        pure . isJust $ IDMap.lookup pwid simpleRegistry.links
-                if isLink
-                    then do
-                        PW.pw_registry_destroy pwInstance.registry pwid
-                        PW.syncState_ pwInstance >> putStrLn "Link removed"
-                    else putStrLn $ show pwid <> " is not a link!"
+            List listKind ->
+                case listKind of
+                    Inputs -> mapM_ print $ IDMap.toList simpleRegistry.inputs
+                    Outputs -> mapM_ print $ IDMap.toList simpleRegistry.outputs
+                    Links -> mapM_ print $ IDMap.toList simpleRegistry.links
+                    Nodes -> mapM_ print $ IDMap.toList simpleRegistry.nodes
+            DeleteLink pwid -> case IDMap.lookup pwid simpleRegistry.links of
+                Just _ -> do
+                    PW.pw_registry_destroy pwInstance.registry pwid
+                    PW.syncState_ pwInstance >> putStrLn "Link removed"
+                Nothing -> putStrLn $ show pwid <> " is not a link!"
             Connect out inp -> do
                 -- TODO: check out/inp are ports and that the links doesn't already exist
                 PW.withLink pwInstance.core (PW.LinkProperties out inp True) \pwLink -> do

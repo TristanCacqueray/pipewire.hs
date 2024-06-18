@@ -4,13 +4,18 @@ module Pipewire.RegistryState where
 import Data.Text (Text)
 import Data.Text qualified as Text
 
+import Control.Concurrent (modifyMVar_)
 import Data.List.NonEmpty (NonEmpty)
 import Pipewire qualified as PW
 import Pipewire.IDMap (IDMap)
 import Pipewire.IDMap qualified as IDMap
 
-withLinkInstance :: (PW.PwInstance RegistryState -> IO a) -> IO a
-withLinkInstance = PW.withInstance initialRegistryState (const updateRegistryState)
+withInstanceRegistryState :: (PW.PwInstance RegistryState -> RegistryState -> IO a) -> IO a
+withInstanceRegistryState cb = PW.withInstance initialRegistryState \pwInstance -> do
+    let updateState ev = modifyMVar_ pwInstance.stateVar (updateRegistryState ev)
+    PW.withRegistryHandler pwInstance updateState do
+        state <- PW.syncState_ pwInstance
+        cb pwInstance state
 
 -- | The registry state, to be maintained with the 'RegistryEvent'
 data RegistryState = RegistryState
@@ -20,6 +25,23 @@ data RegistryState = RegistryState
     , nodes :: IDMap Node
     , devices :: IDMap Device
     }
+
+displayRegistryState :: RegistryState -> Text
+displayRegistryState state =
+    Text.unlines
+        [ "devices:"
+        , displayMap state.devices
+        , "nodes:"
+        , displayMap state.nodes
+        , "outputs:"
+        , displayMap state.outputs
+        , "inputs:"
+        , displayMap state.inputs
+        , "links:" <> Text.unwords (map (Text.pack . show) $ IDMap.toList state.links)
+        ]
+  where
+    displayMap :: (Show a) => IDMap a -> Text
+    displayMap idm = Text.unlines $ map (mappend " - " . Text.pack . show) $ IDMap.toList idm
 
 initialRegistryState :: RegistryState
 initialRegistryState = RegistryState mempty mempty mempty mempty mempty
@@ -47,7 +69,7 @@ data Port = Port
 
 data AudioKind = Mono | FL | FR deriving (Show, Eq, Ord)
 
-data PortKind = Audio (Maybe AudioKind) | Midi deriving (Show, Eq, Ord)
+data PortKind = Audio (Maybe AudioKind) | Midi | Video deriving (Show, Eq, Ord)
 
 pattern AudioMono :: PortKind
 pattern AudioMono = Audio (Just Mono)
@@ -69,7 +91,9 @@ getPortKind dict = do
                 Just fmt
                     | " midi" `Text.isSuffixOf` fmt -> pure (Just Midi)
                     | " audio" `Text.isSuffixOf` fmt -> pure (Just (Audio Nothing))
-                _ -> pure Nothing
+                _ ->
+                    -- TODO: better detect video ports
+                    pure (Just Video)
 
 data Node = Node
     { name :: Text
@@ -78,7 +102,7 @@ data Node = Node
     }
     deriving (Show, Eq, Ord)
 
-newtype Device = Device {name :: Text}
+newtype Device = Device {name :: Text} deriving (Show)
 
 -- | Update the 'RegistryState' on registry event.
 updateRegistryState :: PW.RegistryEvent -> RegistryState -> IO RegistryState
@@ -93,6 +117,10 @@ updateRegistryState ev reg = case ev of
         -- putStrLn $ "Adding a new port: " <> show newPort
         let insert alias (PW.PwID -> nodeID) kind = IDMap.insert pwid (Port{alias, nodeID, kind})
         case newPort of
+            (_, _, _, Nothing) -> do
+                putStrLn $ "Could not determine the port kind for " <> show pwid
+                mapM_ print =<< PW.spaDictRead dict
+                pure reg
             (Just name, Just node, Just "in", Just kind) -> pure $ reg{inputs = insert name node kind reg.inputs}
             (Just name, Just node, Just "out", Just kind) -> pure $ reg{outputs = insert name node kind reg.outputs}
             _ -> putStrLn ("Unknown port: " <> show newPort) >> pure reg
@@ -124,7 +152,6 @@ updateRegistryState ev reg = case ev of
                 <$> PW.spaDictLookup dict "node.name"
                 <*> (fmap PW.PwID <$> PW.spaDictLookupInt dict "device.id")
         media <- PW.spaDictLookup dict "media.name"
-        print (newNode, media)
         case newNode of
             (Just name, deviceID) -> pure $ reg{nodes = IDMap.insert pwid (Node{name, deviceID, media}) reg.nodes}
             _ -> putStrLn "Unknown node" >> pure reg

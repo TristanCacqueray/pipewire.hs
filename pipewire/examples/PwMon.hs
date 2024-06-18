@@ -3,10 +3,11 @@ module Main (main) where
 import Pipewire qualified as PW
 
 main :: IO ()
-main = PW.withInstance () printEvent \pwInstance -> do
-    PW.pw_main_loop_run pwInstance.mainLoop
+main = PW.withInstance () \pwInstance -> do
+    PW.withRegistryHandler pwInstance printEvent do
+        PW.pw_main_loop_run pwInstance.mainLoop
   where
-    printEvent _pwInstance ev () = do
+    printEvent ev = do
         case ev of
             PW.ChangedNode pwid props -> do
                 putStrLn $ "changed: " <> show pwid

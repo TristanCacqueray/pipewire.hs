@@ -3,6 +3,7 @@ module Pipewire (
     PwInstance (..),
     RegistryEvent (..),
     withInstance,
+    withRegistryHandler,
     runInstance,
     quitInstance,
     CoreError (..),
@@ -184,9 +185,9 @@ syncState pwInstance = do
         Just errs -> pure (Left errs)
         Nothing -> Right <$> readState pwInstance
 
--- | Create a new 'PwInstance' by providing an initial state and a registry update handler.
-withInstance :: state -> (PwInstance state -> RegistryEvent -> state -> IO state) -> (PwInstance state -> IO a) -> IO a
-withInstance initialState updateState cb =
+-- | Create a new 'PwInstance'
+withInstance :: state -> (PwInstance state -> IO a) -> IO a
+withInstance initialState cb =
     withPipewire do
         withMainLoop $ \mainLoop -> do
             loop <- pw_main_loop_get_loop mainLoop
@@ -201,22 +202,34 @@ withInstance initialState updateState cb =
                             stateVar <- newMVar initialState
                             registry <- pw_core_get_registry core
                             let pwInstance = PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
-                            withHandlers pwInstance do
-                                cb pwInstance
+                            cb pwInstance
   where
-    -- Setup registry handlers
-    withHandlers pwInstance go =
-        withSpaHook \registryListener -> do
-            withNodeEvents \nodeEvents -> withNodeInfoHandler (nodeInfoHandler pwInstance) nodeEvents do
-                withRegistryEvents (handler nodeEvents pwInstance) (removeHandler pwInstance) \registryEvent -> do
-                    pw_registry_add_listener pwInstance.registry registryListener registryEvent
-                    go
+    infoHandler _pwinfo = pure ()
+    errorHandler errorVar pwid _seq' res msg = modifyMVar_ errorVar (\xs -> pure $ CoreError pwid res msg : xs)
+    doneHandler mainLoop sync _pwid seqid = do
+        modifyMVar_ sync \case
+            -- syncState is running and we reached the pending value, quit the loop now
+            Just pending
+                | pending == seqid -> pw_main_loop_quit mainLoop >> pure Nothing
+            -- we are not waiting for the loop to stop, so we don't stop the loop
+            x -> pure x
 
-    nodeInfoHandler pwInstance pwid props = do
+-- | Setup 'RegistryEvents'
+withRegistryHandler :: PwInstance state -> (RegistryEvent -> IO ()) -> IO a -> IO a
+withRegistryHandler pwInstance registryHandler go =
+    -- Setup registry handlers
+    withSpaHook \registryListener -> do
+        withNodeEvents \nodeEvents -> withNodeInfoHandler nodeInfoHandler nodeEvents do
+            withRegistryEvents (handler nodeEvents) removeHandler \registryEvent -> do
+                pw_registry_add_listener pwInstance.registry registryListener registryEvent
+                go
+  where
+    removeHandler pwid = registryHandler $ Removed pwid
+    nodeInfoHandler pwid props = do
         spaDictSize props >>= \case
             0 -> pure ()
-            _ -> modifyMVar_ pwInstance.stateVar (updateState pwInstance $ ChangedNode pwid props)
-    handler nodeEvents pwInstance pwid name _ props = do
+            _ -> registryHandler $ ChangedNode pwid props
+    handler nodeEvents pwid name _ props = do
         case name of
             "PipeWire:Interface:Node" -> do
                 node <- PwNode.bindNode pwInstance.registry pwid
@@ -228,17 +241,7 @@ withInstance initialState updateState cb =
                     -- update the pending sync to wait for node events to be processed
                     sync -> Just <$> pw_core_sync pwInstance.core pw_id_core sync
             _ -> pure ()
-        modifyMVar_ pwInstance.stateVar (updateState pwInstance $ Added pwid name props)
-    removeHandler pwInstance pwid = modifyMVar_ pwInstance.stateVar (updateState pwInstance $ Removed pwid)
-    infoHandler _pwinfo = pure ()
-    errorHandler errorVar pwid _seq' res msg = modifyMVar_ errorVar (\xs -> pure $ CoreError pwid res msg : xs)
-    doneHandler mainLoop sync _pwid seqid = do
-        modifyMVar_ sync \case
-            -- syncState is running and we reached the pending value, quit the loop now
-            Just pending
-                | pending == seqid -> pw_main_loop_quit mainLoop >> pure Nothing
-            -- we are not waiting for the loop to stop, so we don't stop the loop
-            x -> pure x
+        registryHandler $ Added pwid name props
 
 {- |
 Do not call when the loop is runnning!
