@@ -74,6 +74,7 @@ getPortKind dict = do
 data Node = Node
     { name :: Text
     , deviceID :: Maybe PW.PwID
+    , media :: Maybe Text
     }
     deriving (Show, Eq, Ord)
 
@@ -100,20 +101,13 @@ updateRegistryState ev reg = case ev of
         case newLink of
             (Just out, Just inp) -> pure $ reg{links = IDMap.insert pwid (PW.PwID out, PW.PwID inp) reg.links}
             _ -> putStrLn ("Unknown link: " <> show newLink) >> pure reg
-    PW.Added pwid "PipeWire:Interface:Node" dict -> do
-        newNode <-
-            (,)
-                <$> PW.spaDictLookup dict "node.name"
-                <*> (fmap PW.PwID <$> PW.spaDictLookupInt dict "device.id")
-        case newNode of
-            (Just name, deviceID) -> pure $ reg{nodes = IDMap.insert pwid (Node{name, deviceID}) reg.nodes}
-            _ -> putStrLn "Unknown node" >> pure reg
+    PW.Added pwid "PipeWire:Interface:Node" dict -> handleNode pwid dict
     PW.Added pwid "PipeWire:Interface:Device" dict -> do
         PW.spaDictLookup dict "device.nick" >>= \case
             Just name -> pure $ reg{devices = IDMap.insert pwid (Device name) reg.devices}
             Nothing -> putStrLn "Unknown device" >> pure reg
     PW.Added{} -> pure reg
-    PW.ChangedNode{} -> pure reg
+    PW.ChangedNode pwid props -> handleNode pwid props
     PW.Removed pwid ->
         pure $
             RegistryState
@@ -123,6 +117,17 @@ updateRegistryState ev reg = case ev of
                 , nodes = IDMap.delete pwid reg.nodes
                 , devices = IDMap.delete pwid reg.devices
                 }
+  where
+    handleNode pwid dict = do
+        newNode <-
+            (,)
+                <$> PW.spaDictLookup dict "node.name"
+                <*> (fmap PW.PwID <$> PW.spaDictLookupInt dict "device.id")
+        media <- PW.spaDictLookup dict "media.name"
+        print (newNode, media)
+        case newNode of
+            (Just name, deviceID) -> pure $ reg{nodes = IDMap.insert pwid (Node{name, deviceID, media}) reg.nodes}
+            _ -> putStrLn "Unknown node" >> pure reg
 
 data LinkResult
     = LinkFailed (NonEmpty PW.CoreError)

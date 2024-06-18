@@ -6,7 +6,7 @@ newtype SeqID = SeqID {getID :: Int}
     deriving newtype (Show, Eq, Ord)
 
 newtype PwID = PwID {getID :: Int}
-    deriving newtype (Show, Eq, Ord, Storable)
+    deriving newtype (Show, Eq, Ord, Storable, Num)
 
 newtype PwVersion = PwVersion {getVersion :: Int}
     deriving newtype (Show, Eq, Ord)

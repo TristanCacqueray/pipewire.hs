@@ -60,10 +60,14 @@ pw_core_add_listener :: Core -> SpaHook -> CoreEvents -> IO ()
 pw_core_add_listener (Core core) (SpaHook hook) (CoreEvents pce) =
     [C.exp| void{pw_core_add_listener($(struct pw_core* core), $(struct spa_hook* hook), $(struct pw_core_events* pce), NULL)} |]
 
-pw_core_sync :: Core -> PwID -> IO SeqID
-pw_core_sync (Core core) (PwID (fromIntegral -> pwid)) =
+pw_core_sync :: Core -> PwID -> Maybe SeqID -> IO SeqID
+pw_core_sync (Core core) (PwID (fromIntegral -> pwid)) mSeq =
     SeqID . fromIntegral
-        <$> [C.exp| int{pw_core_sync($(struct pw_core* core), $(int pwid), 0)} |]
+        <$> [C.exp| int{pw_core_sync($(struct pw_core* core), $(int pwid), $(int seqID))} |]
+  where
+    seqID = case mSeq of
+        Just (SeqID x) -> fromIntegral x
+        Nothing -> 0
 
 pw_id_core :: PwID
 pw_id_core = PwID $ fromIntegral [C.pure| int{PW_ID_CORE} |]

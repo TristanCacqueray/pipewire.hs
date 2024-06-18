@@ -29,7 +29,7 @@ main =
         PW.withCoreEvents infoHandler (doneHandler mainLoop pendingRef) errorHandler \coreEvents -> do
             PW.withSpaHook \coreListener -> do
                 PW.pw_core_add_listener core coreListener coreEvents
-                writeIORef pendingRef =<< PW.pw_core_sync core PW.pw_id_core
+                writeIORef pendingRef =<< PW.pw_core_sync core PW.pw_id_core Nothing
                 PW.pw_main_loop_run mainLoop
 
     doneHandler mainLoop pendingRef pwid seqid' = do

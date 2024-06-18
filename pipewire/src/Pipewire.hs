@@ -79,7 +79,6 @@ import Control.Exception (bracket, bracket_)
 import Language.C.Inline qualified as C
 
 import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Pipewire.CoreAPI.Context (Context, pw_context_connect, pw_context_destroy, pw_context_new)
@@ -129,7 +128,9 @@ data PwInstance state = PwInstance
     , mainLoop :: MainLoop
     , core :: Core
     , registry :: Registry
-    , sync :: IORef SeqID
+    , sync :: MVar (Maybe SeqID)
+    -- ^ the core sync pending value for the done handler
+    -- when it is Nothing, don't quit the loop
     , errorsVar :: MVar [CoreError]
     }
 
@@ -174,8 +175,8 @@ Do not call when the loop is runnning!
 -}
 syncState :: PwInstance state -> IO (Either (NonEmpty CoreError) state)
 syncState pwInstance = do
-    -- Write the expected SeqID so that the core handler stop the loop
-    writeIORef pwInstance.sync =<< pw_core_sync pwInstance.core pw_id_core
+    -- Write a Some SeqID to the pending sync
+    modifyMVar_ pwInstance.sync (fmap Just . pw_core_sync pwInstance.core pw_id_core)
     -- Start the loop
     pw_main_loop_run pwInstance.mainLoop
     -- Call back with the finalized state
@@ -191,7 +192,7 @@ withInstance initialState updateState cb =
             loop <- pw_main_loop_get_loop mainLoop
             withContext loop \context -> do
                 withCore context \core -> do
-                    sync <- newIORef (SeqID 0)
+                    sync <- newMVar Nothing
                     errorsVar <- newMVar []
                     withCoreEvents infoHandler (doneHandler mainLoop sync) (errorHandler errorsVar) \coreEvents -> do
                         withSpaHook \coreListener -> do
@@ -221,15 +222,23 @@ withInstance initialState updateState cb =
                 node <- PwNode.bindNode pwInstance.registry pwid
                 -- Keep track of node params to get media change
                 PwNode.addNodeListener node nodeEvents
+                modifyMVar_ pwInstance.sync \case
+                    -- syncState is not running
+                    Nothing -> pure Nothing
+                    -- update the pending sync to wait for node events to be processed
+                    sync -> Just <$> pw_core_sync pwInstance.core pw_id_core sync
             _ -> pure ()
         modifyMVar_ pwInstance.stateVar (updateState pwInstance $ Added pwid name props)
     removeHandler pwInstance pwid = modifyMVar_ pwInstance.stateVar (updateState pwInstance $ Removed pwid)
     infoHandler _pwinfo = pure ()
     errorHandler errorVar pwid _seq' res msg = modifyMVar_ errorVar (\xs -> pure $ CoreError pwid res msg : xs)
     doneHandler mainLoop sync _pwid seqid = do
-        pending <- readIORef sync
-        when (pending == seqid) do
-            void $ pw_main_loop_quit mainLoop
+        modifyMVar_ sync \case
+            -- syncState is running and we reached the pending value, quit the loop now
+            Just pending
+                | pending == seqid -> pw_main_loop_quit mainLoop >> pure Nothing
+            -- we are not waiting for the loop to stop, so we don't stop the loop
+            x -> pure x
 
 {- |
 Do not call when the loop is runnning!
