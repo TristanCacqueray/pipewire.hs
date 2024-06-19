@@ -82,7 +82,7 @@ getSinkNode reg = case PW.findNode "video-sink" reg of
 
 -- | This wrapper automatically connects the node-id when the port is added to the registry.
 withAutoConnect :: (IORef (Maybe PW.PwID) -> PW.PwInstance PW.RegistryState -> IO a) -> IO a
-withAutoConnect cb = do
+withAutoConnect cb = PW.withProperties \props -> do
     -- TODO: quit the loop if the link state is error?
     let linkInfoHandler _pwid linkStatus = do
             putStrLn $ "Link status: " <> show linkStatus
@@ -96,7 +96,7 @@ withAutoConnect cb = do
             -- Create the link between the ports
             connectPort pwInstance out inp = do
                 putStrLn $ "Connecting... " <> show out <> " -> " <> show inp
-                props <- PW.newLinkProperties $ PW.LinkProperties out inp False
+                PW.setupLinkProperties props $ PW.LinkProperties out inp False
                 link <- PW.pw_link_create pwInstance.core props
                 PW.pw_proxy_add_object_listener link.getProxy spaHook (PW.pwLinkEventsFuncs pwLinkEvents)
 

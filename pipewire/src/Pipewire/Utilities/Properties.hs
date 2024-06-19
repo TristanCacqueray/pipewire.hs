@@ -1,5 +1,6 @@
 module Pipewire.Utilities.Properties where
 
+import Control.Exception (bracket)
 import Language.C.Inline qualified as C
 
 import Pipewire.CContext
@@ -26,6 +27,13 @@ pw_properties_new =
         <$> dieOnNull
             "pw_properties_new"
             [C.exp| struct pw_properties*{pw_properties_new(NULL, NULL)} |]
+
+pw_properties_free :: PwProperties -> IO ()
+pw_properties_free (PwProperties pwProperties) =
+    [C.exp|void{ pw_properties_free($(struct pw_properties* pwProperties)) }|]
+
+withProperties :: (PwProperties -> IO a) -> IO a
+withProperties = bracket pw_properties_new pw_properties_free
 
 pw_properties_new_dict :: SpaDict -> IO PwProperties
 pw_properties_new_dict (SpaDict spaDict) =

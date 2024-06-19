@@ -9,7 +9,7 @@ import Pipewire.CoreAPI.Proxy
 import Pipewire.Enum
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..))
-import Pipewire.Utilities.Properties (PwProperties, pw_properties_new, pw_properties_set_id, pw_properties_set_linger)
+import Pipewire.Utilities.Properties (PwProperties, pw_properties_set_id, pw_properties_set_linger, withProperties)
 
 C.context (C.baseCtx <> pwContext)
 
@@ -28,9 +28,8 @@ data LinkProperties = LinkProperties
 
 -- | Setup a link (synchronously)
 withLink :: Core -> LinkProperties -> (Link -> IO a) -> IO a
-withLink core linkProperties cb = do
-    -- Setup the link properties
-    props <- newLinkProperties linkProperties
+withLink core linkProperties cb = withProperties \props -> do
+    setupLinkProperties props linkProperties
     -- Create the link proxy
     pwLink <- pw_link_create core props
     cb pwLink
@@ -41,15 +40,13 @@ withLink core linkProperties cb = do
         pw_proxy_destroy pwLink.getProxy
 
 -- | Create the PwProperties for 'pw_link_create'
-newLinkProperties :: LinkProperties -> IO PwProperties
-newLinkProperties linkProperties = do
-    props <- pw_properties_new
+setupLinkProperties :: PwProperties -> LinkProperties -> IO ()
+setupLinkProperties props linkProperties = do
     pw_properties_set_id props "link.output.port" linkProperties.portOutput
     pw_properties_set_id props "link.input.port" linkProperties.portInput
     when linkProperties.linger do
         -- Keep the link after the program quit
         pw_properties_set_linger props
-    pure props
 
 pw_link_create :: Core -> PwProperties -> IO Link
 pw_link_create core props =

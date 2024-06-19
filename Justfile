@@ -10,6 +10,9 @@ build:
 test-controller:
   cabal repl --with-ghc=doctest exe:pw-controller
 
+example name *args:
+  cabal run --flags=examples -O0 exe:{{name}} -- {{args}}
+
 dev target:
   watchexec cabal build -O0 --flag=examples exe:{{target}}
 

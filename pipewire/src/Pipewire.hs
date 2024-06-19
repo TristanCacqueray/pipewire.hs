@@ -38,6 +38,7 @@ module Pipewire (
     -- ** Link
     module Pipewire.CoreAPI.Link,
     waitForLink,
+    waitForLinkAsync,
 
     -- ** Loop
     module Pipewire.CoreAPI.Loop,
@@ -80,12 +81,13 @@ import Control.Exception (bracket, bracket_)
 import Language.C.Inline qualified as C
 
 import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Pipewire.CoreAPI.Context (Context, pw_context_connect, pw_context_destroy, pw_context_new)
 import Pipewire.CoreAPI.Core (Core, CoreEvents, CoreInfo, DoneHandler, ErrorHandler, InfoHandler, Registry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, withCoreEvents)
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
-import Pipewire.CoreAPI.Link (Link (..), LinkProperties (..), newLinkProperties, pwLinkEventsFuncs, pw_link_create, withLink, withLinkEvents)
+import Pipewire.CoreAPI.Link (Link (..), LinkProperties (..), pwLinkEventsFuncs, pw_link_create, setupLinkProperties, withLink, withLinkEvents)
 import Pipewire.CoreAPI.Loop (Loop)
 import Pipewire.CoreAPI.MainLoop (MainLoop, pw_main_loop_destroy, pw_main_loop_get_loop, pw_main_loop_new, pw_main_loop_quit, pw_main_loop_run, withSignalsHandler)
 import Pipewire.CoreAPI.Node (Node, NodeInfoHandler, withNodeEvents, withNodeInfoHandler)
@@ -98,7 +100,7 @@ import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
 import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, spaDictSize, withSpaDict)
 import Pipewire.SPA.Utilities.Hooks (SpaHook, withSpaHook)
 import Pipewire.Stream (pw_stream_get_node_id)
-import Pipewire.Utilities.Properties (PwProperties, pw_properties_get, pw_properties_new, pw_properties_new_dict, pw_properties_set, pw_properties_set_id, pw_properties_set_linger)
+import Pipewire.Utilities.Properties (PwProperties, pw_properties_free, pw_properties_get, pw_properties_new, pw_properties_new_dict, pw_properties_set, pw_properties_set_id, pw_properties_set_linger, withProperties)
 
 C.include "<pipewire/pipewire.h>"
 
@@ -260,10 +262,33 @@ waitForLink pwLink pwInstance = do
                     quitInstance pwInstance
                 Right x -> do
                     putStrLn $ "Link state pwid " <> show pwid <> ": " <> show x
-                    quitInstance pwInstance
 
         withSpaHook \spaHook ->
             withLinkEvents infoHandler \ple -> do
                 pw_proxy_add_object_listener pwLink.getProxy spaHook (pwLinkEventsFuncs ple)
                 putStrLn "Waiting for link..."
                 runInstance pwInstance
+
+type LinkError = (Int, Text)
+
+-- | Wait for link with the loop running in another thread
+waitForLinkAsync :: Link -> IO (Maybe (Either LinkError Text))
+waitForLinkAsync pwLink = do
+    baton <- newEmptyMVar
+    let destroyHandler = putStrLn "link destroyed!"
+        removedHandler = putStrLn "link removed!"
+        errorHandler res err = putMVar baton $ Just $ Left (res, err)
+    withProxyEvents pwLink.getProxy destroyHandler removedHandler errorHandler do
+        let infoHandler pwid state = case state of
+                Left err -> putMVar baton $ Just $ Right err
+                Right PW_LINK_STATE_ACTIVE -> do
+                    putStrLn "Link is active, quiting the loop!"
+                    putMVar baton Nothing
+                Right x -> do
+                    putStrLn $ "Link state pwid " <> show pwid <> ": " <> show x
+
+        withSpaHook \spaHook ->
+            withLinkEvents infoHandler \ple -> do
+                pw_proxy_add_object_listener pwLink.getProxy spaHook (pwLinkEventsFuncs ple)
+                putStrLn "Waiting for link..."
+                takeMVar baton
