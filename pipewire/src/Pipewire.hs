@@ -3,9 +3,9 @@ module Pipewire (
     PwInstance (..),
     RegistryEvent (..),
     withInstance,
+    withThreadedInstance,
     withRegistryHandler,
     runInstance,
-    quitInstance,
     CoreError (..),
     syncState,
     syncState_,
@@ -14,6 +14,7 @@ module Pipewire (
     -- * Mid level bracket API
     withPipewire,
     withMainLoop,
+    withThreadLoop,
     withContext,
     withCore,
 
@@ -28,6 +29,9 @@ module Pipewire (
 
     -- ** Main Loop
     module Pipewire.CoreAPI.MainLoop,
+
+    -- ** Thread Loop
+    module Pipewire.CoreAPI.ThreadLoop,
 
     -- ** Context
     module Pipewire.CoreAPI.Context,
@@ -94,6 +98,7 @@ import Pipewire.CoreAPI.Node (Node, NodeInfoHandler, withNodeEvents, withNodeInf
 import Pipewire.CoreAPI.Node qualified as PwNode
 import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_add_object_listener, pw_proxy_destroy, withProxyEvents)
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, withRegistryEvents)
+import Pipewire.CoreAPI.ThreadLoop (ThreadLoop, pw_thread_loop_destroy, pw_thread_loop_get_loop, pw_thread_loop_new, pw_thread_loop_signal, pw_thread_loop_start, pw_thread_loop_stop, pw_thread_loop_wait, withLock, withThreadSignalsHandler, withUnlock)
 import Pipewire.Enum
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
@@ -113,6 +118,12 @@ withMainLoop cb = bracket pw_main_loop_new pw_main_loop_destroy withHandler
   where
     withHandler mainLoop = withSignalsHandler mainLoop (cb mainLoop)
 
+withThreadLoop :: Text -> (ThreadLoop -> IO a) -> IO a
+withThreadLoop name cb = withCString name \cname ->
+    bracket (pw_thread_loop_new cname) pw_thread_loop_destroy withHandler
+  where
+    withHandler threadLoop = withThreadSignalsHandler threadLoop (cb threadLoop)
+
 withContext :: Loop -> (Context -> IO a) -> IO a
 withContext loop = bracket (pw_context_new loop) pw_context_destroy
 
@@ -128,7 +139,7 @@ getLibraryVersion = ([C.exp| const char*{pw_get_library_version()} |] :: IO CStr
 -- | A pipewire client instance
 data PwInstance state = PwInstance
     { stateVar :: MVar state
-    , mainLoop :: MainLoop
+    , instanceLoop :: InstanceLoop
     , core :: Core
     , registry :: Registry
     , sync :: MVar (Maybe SeqID)
@@ -136,6 +147,13 @@ data PwInstance state = PwInstance
     -- when it is Nothing, don't quit the loop
     , errorsVar :: MVar [CoreError]
     }
+
+data InstanceLoop = SyncLoop MainLoop | AsyncLoop ThreadLoop
+
+stopInstanceLoop :: InstanceLoop -> IO ()
+stopInstanceLoop = \case
+    SyncLoop mainLoop -> pw_main_loop_quit mainLoop
+    AsyncLoop threadLoop -> pw_thread_loop_signal threadLoop False
 
 -- | A pipewire error
 data CoreError = CoreError
@@ -153,7 +171,9 @@ data RegistryEvent = Added PwID Text SpaDict | Removed PwID | ChangedNode PwID S
 -- | Run the main loop
 runInstance :: PwInstance state -> IO (Maybe (NonEmpty CoreError))
 runInstance pwInstance = do
-    pw_main_loop_run pwInstance.mainLoop
+    case pwInstance.instanceLoop of
+        SyncLoop mainLoop -> pw_main_loop_run mainLoop
+        AsyncLoop threadLoop -> withLock threadLoop $ pw_thread_loop_wait threadLoop
     getErrors pwInstance
 
 readState :: PwInstance state -> IO state
@@ -161,7 +181,11 @@ readState pwInstance = readMVar pwInstance.stateVar
 
 -- | Terminate the main loop, to be called from handlers.
 quitInstance :: PwInstance state -> IO ()
-quitInstance pwInstance = void $ pw_main_loop_quit pwInstance.mainLoop
+quitInstance pwInstance = case pwInstance.instanceLoop of
+    SyncLoop mainLoop -> pw_main_loop_quit mainLoop
+    AsyncLoop threadLoop ->
+        -- Question: do we need to call pw_thread_loop_signal ?
+        pw_thread_loop_stop threadLoop
 
 -- | Like 'syncState' but throwing an error if there was any pipewire error.
 syncState_ :: PwInstance state -> IO state
@@ -178,45 +202,67 @@ Do not call when the loop is runnning!
 -}
 syncState :: PwInstance state -> IO (Either (NonEmpty CoreError) state)
 syncState pwInstance = do
-    -- Write a Some SeqID to the pending sync
-    modifyMVar_ pwInstance.sync (fmap Just . pw_core_sync pwInstance.core pw_id_core)
     -- Start the loop
-    pw_main_loop_run pwInstance.mainLoop
+    case pwInstance.instanceLoop of
+        SyncLoop mainLoop -> startSync >> pw_main_loop_run mainLoop
+        AsyncLoop threadLoop -> withLock threadLoop do
+            startSync >> pw_thread_loop_wait threadLoop
     -- Call back with the finalized state
     getErrors pwInstance >>= \case
         Just errs -> pure (Left errs)
         Nothing -> Right <$> readState pwInstance
+  where
+    -- Write a Some SeqID to the pending sync
+    startSync =
+        modifyMVar_ pwInstance.sync (fmap Just . pw_core_sync pwInstance.core pw_id_core)
 
--- | Create a new 'PwInstance'
-withInstance :: state -> (PwInstance state -> IO a) -> IO a
-withInstance initialState cb =
+-- | Create a new 'PwInstance'. Use 'withThreadedInstance' to use the 'PwInstance' with multiple thread.
+withInstance :: state -> (MainLoop -> PwInstance state -> IO a) -> IO a
+withInstance initialState cb = withPipewire do
+    withMainLoop $ \mainLoop -> do
+        loop <- pw_main_loop_get_loop mainLoop
+        withInstanceLoop (SyncLoop mainLoop) loop initialState (cb mainLoop)
+
+{- | Create a new 'PwInstance' using a threaded loop.
+Note: the loop is already locked, use 'withRegistryHandler' or 'withUnlock' to let it run.
+-}
+withThreadedInstance :: state -> (ThreadLoop -> PwInstance state -> IO a) -> IO a
+withThreadedInstance initialState cb =
     withPipewire do
-        withMainLoop $ \mainLoop -> do
-            loop <- pw_main_loop_get_loop mainLoop
-            withContext loop \context -> do
-                withCore context \core -> do
-                    sync <- newMVar Nothing
-                    errorsVar <- newMVar []
-                    withCoreEvents infoHandler (doneHandler mainLoop sync) (errorHandler errorsVar) \coreEvents -> do
-                        withSpaHook \coreListener -> do
-                            pw_core_add_listener core coreListener coreEvents
+        withThreadLoop "pipewire.hs" $ \threadLoop -> withLock threadLoop do
+            pw_thread_loop_start threadLoop
+            loop <- pw_thread_loop_get_loop threadLoop
+            withInstanceLoop (AsyncLoop threadLoop) loop initialState \pwInstance -> do
+                cb threadLoop pwInstance
 
-                            stateVar <- newMVar initialState
-                            registry <- pw_core_get_registry core
-                            let pwInstance = PwInstance{stateVar, errorsVar, mainLoop, sync, core, registry}
-                            cb pwInstance
+withInstanceLoop :: InstanceLoop -> Loop -> state -> (PwInstance state -> IO a) -> IO a
+withInstanceLoop instanceLoop loop initialState cb = do
+    withContext loop \context -> do
+        withCore context \core -> do
+            sync <- newMVar Nothing
+            errorsVar <- newMVar []
+            withCoreEvents infoHandler (doneHandler sync) (errorHandler errorsVar) \coreEvents -> do
+                withSpaHook \coreListener -> do
+                    pw_core_add_listener core coreListener coreEvents
+
+                    stateVar <- newMVar initialState
+                    registry <- pw_core_get_registry core
+                    let pwInstance = PwInstance{stateVar, errorsVar, instanceLoop, sync, core, registry}
+                    cb pwInstance
   where
     infoHandler _pwinfo = pure ()
     errorHandler errorVar pwid _seq' res msg = modifyMVar_ errorVar (\xs -> pure $ CoreError pwid res msg : xs)
-    doneHandler mainLoop sync _pwid seqid = do
+    doneHandler sync _pwid seqid = do
         modifyMVar_ sync \case
             -- syncState is running and we reached the pending value, quit the loop now
             Just pending
-                | pending == seqid -> pw_main_loop_quit mainLoop >> pure Nothing
+                | pending == seqid -> stopInstanceLoop instanceLoop >> pure Nothing
             -- we are not waiting for the loop to stop, so we don't stop the loop
             x -> pure x
 
--- | Setup 'RegistryEvents'
+{- | Setup 'RegistryEvents'. The loop must be already locked, as provided by 'withThreadedInstance'.
+The closure is executed without the lock.
+-}
 withRegistryHandler :: PwInstance state -> (RegistryEvent -> IO ()) -> IO a -> IO a
 withRegistryHandler pwInstance registryHandler go =
     -- Setup registry handlers
@@ -224,7 +270,9 @@ withRegistryHandler pwInstance registryHandler go =
         withNodeEvents \nodeEvents -> withNodeInfoHandler nodeInfoHandler nodeEvents do
             withRegistryEvents (handler nodeEvents) removeHandler \registryEvent -> do
                 pw_registry_add_listener pwInstance.registry registryListener registryEvent
-                go
+                case pwInstance.instanceLoop of
+                    AsyncLoop threadLoop -> withUnlock threadLoop go
+                    _ -> go
   where
     removeHandler pwid = registryHandler $ Removed pwid
     nodeInfoHandler pwid props = do
@@ -245,9 +293,7 @@ withRegistryHandler pwInstance registryHandler go =
             _ -> pure ()
         registryHandler $ Added pwid name props
 
-{- |
-Do not call when the loop is runnning!
--}
+-- | Wait for link with a paused 'MainLoop'.
 waitForLink :: Link -> PwInstance state -> IO (Maybe (NonEmpty CoreError))
 waitForLink pwLink pwInstance = do
     let abort msg = putStrLn msg >> quitInstance pwInstance
@@ -271,18 +317,24 @@ waitForLink pwLink pwInstance = do
 
 type LinkError = (Int, Text)
 
--- | Wait for link with the loop running in another thread
-waitForLinkAsync :: Link -> IO (Maybe (Either LinkError Text))
-waitForLinkAsync pwLink = do
+-- | Wait for link with a running 'ThreadLoop'
+waitForLinkAsync :: Link -> ThreadLoop -> IO (Maybe (Either LinkError Text))
+waitForLinkAsync pwLink threadLoop = do
     baton <- newEmptyMVar
-    let destroyHandler = putStrLn "link destroyed!"
-        removedHandler = putStrLn "link removed!"
+    let abort msg = print msg >> putMVar baton (Just $ Right msg)
+        destroyHandler = abort "link destroyed!"
+        removedHandler = abort "link removed!"
         errorHandler res err = putMVar baton $ Just $ Left (res, err)
     withProxyEvents pwLink.getProxy destroyHandler removedHandler errorHandler do
         let infoHandler pwid state = case state of
-                Left err -> putMVar baton $ Just $ Right err
+                Left err -> do
+                    putStrLn $ "Link error: " <> show err
+                    putMVar baton $ Just $ Right err
                 Right PW_LINK_STATE_ACTIVE -> do
                     putStrLn "Link is active, quiting the loop!"
+                    putMVar baton Nothing
+                Right PW_LINK_STATE_INIT -> do
+                    putStrLn "Link is initialized, we can stop as this can be the final state for a paused connection"
                     putMVar baton Nothing
                 Right x -> do
                     putStrLn $ "Link state pwid " <> show pwid <> ": " <> show x
@@ -290,5 +342,4 @@ waitForLinkAsync pwLink = do
         withSpaHook \spaHook ->
             withLinkEvents infoHandler \ple -> do
                 pw_proxy_add_object_listener pwLink.getProxy spaHook (pwLinkEventsFuncs ple)
-                putStrLn "Waiting for link..."
-                takeMVar baton
+                withUnlock threadLoop $ takeMVar baton

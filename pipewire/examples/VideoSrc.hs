@@ -23,7 +23,7 @@ import Pipewire.RegistryState qualified as PW
 import Pipewire.Video qualified as PW
 
 main :: IO ()
-main = withAutoConnect \nodeIDRef pwInstance -> do
+main = withAutoConnect \mainLoop nodeIDRef pwInstance -> do
     -- Store the node-id when the stream state changed
     let stateHandler stream = \case
             PW.PW_STREAM_STATE_PAUSED -> do
@@ -36,7 +36,7 @@ main = withAutoConnect \nodeIDRef pwInstance -> do
 
     -- Create a counter to animate the draw
     iTimeRef <- newIORef 0
-    PW.withVideoStream pwInstance.mainLoop pwInstance.core stateHandler (draw iTimeRef) \stream -> do
+    PW.withVideoStream mainLoop pwInstance.core stateHandler (draw iTimeRef) \stream -> do
         PW.connectVideoStream stream
         putStrLn "The stream is running!"
         -- Run the main loop forever.
@@ -81,7 +81,7 @@ getSinkNode reg = case PW.findNode "video-sink" reg of
     sinkCommand = "gst-launch-1.0 pipewiresrc autoconnect=0 client-name=video-sink ! videoconvert ! autovideosink"
 
 -- | This wrapper automatically connects the node-id when the port is added to the registry.
-withAutoConnect :: (IORef (Maybe PW.PwID) -> PW.PwInstance PW.RegistryState -> IO a) -> IO a
+withAutoConnect :: (PW.MainLoop -> IORef (Maybe PW.PwID) -> PW.PwInstance PW.RegistryState -> IO a) -> IO a
 withAutoConnect cb = PW.withProperties \props -> do
     -- TODO: quit the loop if the link state is error?
     let linkInfoHandler _pwid linkStatus = do
@@ -126,6 +126,6 @@ withAutoConnect cb = PW.withProperties \props -> do
                 pure reg
 
         -- Setup the instance and call the closure.
-        PW.withInstance PW.initialRegistryState \pwInstance ->
+        PW.withInstance PW.initialRegistryState \mainLoop pwInstance ->
             PW.withRegistryHandler pwInstance (updateState pwInstance) do
-                cb nodeIDRef pwInstance
+                cb mainLoop nodeIDRef pwInstance

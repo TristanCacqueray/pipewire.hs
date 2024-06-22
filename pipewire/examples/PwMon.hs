@@ -3,9 +3,9 @@ module Main (main) where
 import Pipewire qualified as PW
 
 main :: IO ()
-main = PW.withInstance () \pwInstance -> do
+main = PW.withInstance () \_ pwInstance -> do
     PW.withRegistryHandler pwInstance printEvent do
-        PW.pw_main_loop_run pwInstance.mainLoop
+        print =<< PW.runInstance pwInstance
   where
     printEvent ev = do
         case ev of

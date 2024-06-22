@@ -53,6 +53,7 @@ library
     Pipewire.CoreAPI.Node
     Pipewire.CoreAPI.Proxy
     Pipewire.CoreAPI.Registry
+    Pipewire.CoreAPI.ThreadLoop
     Pipewire.Enum
     Pipewire.IDMap
     Pipewire.Prelude

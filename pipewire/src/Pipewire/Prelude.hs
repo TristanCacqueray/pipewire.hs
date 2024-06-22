@@ -14,6 +14,7 @@ module Pipewire.Prelude (
     module Foreign,
     module Foreign.C.Types,
     module Foreign.C.String,
+    fromBool,
 
     -- * text
     Text,
@@ -37,6 +38,7 @@ import Foreign (FunPtr, Ptr, alloca, allocaBytes, freeHaskellFunPtr, nullPtr)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CFloat, CInt)
 import Foreign.C.Types qualified (CFloat (..))
+import Foreign.Marshal.Utils (fromBool)
 
 peekCString :: CString -> IO Text
 peekCString cs = do

@@ -11,7 +11,7 @@ import Pipewire.IDMap (IDMap)
 import Pipewire.IDMap qualified as IDMap
 
 withInstanceRegistryState :: (PW.PwInstance RegistryState -> RegistryState -> IO a) -> IO a
-withInstanceRegistryState cb = PW.withInstance initialRegistryState \pwInstance -> do
+withInstanceRegistryState cb = PW.withInstance initialRegistryState \_ pwInstance -> do
     let updateState ev = modifyMVar_ pwInstance.stateVar (updateRegistryState ev)
     PW.withRegistryHandler pwInstance updateState do
         state <- PW.syncState_ pwInstance

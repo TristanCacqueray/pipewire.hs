@@ -8,6 +8,7 @@ import Language.C.Types
 -- CoreAPI
 data PwLoopStruct
 data PwMainLoopStruct
+data PwThreadLoopStruct
 data PwContextStruct
 data PwCoreStruct
 data PwRegistryStruct
@@ -47,6 +48,7 @@ pwContext =
         { ctxTypesTable =
             Map.fromList
                 [ (Struct "pw_main_loop", [t|PwMainLoopStruct|])
+                , (Struct "pw_thread_loop", [t|PwThreadLoopStruct|])
                 , (Struct "pw_loop", [t|PwLoopStruct|])
                 , (Struct "pw_context", [t|PwContextStruct|])
                 , (Struct "pw_core", [t|PwCoreStruct|])
