@@ -12,10 +12,12 @@ The bindings are experimental: only a small subset of the libpipewire is impleme
 A basic high level API is available (exported in camelCase).
 Checkout the following examples:
 
+- `pw-mon` to watch pipewire events: [PwMon.hs](./pipewire/examples/PwMon.hs)
 - `pw-link` to list/create/delete links: [PwLink.hs](./pipewire/examples/PwLink.hs)
+- `pw-metadata` to list/create/delete metadatas: [PwMetadata.hs](./pipewire/examples/PwMetadata.hs)
 - `tutorial4` to play a tone: [Tutorial4.hs](./pipewire/examples/Tutorial4.hs)
 - `video-src` to draw a video stream: [VideoSrc.hs](./pipewire/examples/VideoSrc.hs)
-- `pw-play` to draw a video stream: [PwPlay.hs](./pipewire/examples/PwPlay.hs)
+- `pw-play` to play an audio file: [PwPlay.hs](./pipewire/examples/PwPlay.hs)
 - `pw-controller` to apply rules to pipewire links: [pw-controller](./pw-controller)
 
 References:

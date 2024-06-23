@@ -55,6 +55,7 @@ library
     Pipewire.CoreAPI.Registry
     Pipewire.CoreAPI.ThreadLoop
     Pipewire.Enum
+    Pipewire.Extensions.Metadata
     Pipewire.IDMap
     Pipewire.Prelude
     Pipewire.Protocol
@@ -98,6 +99,7 @@ common examples
   if flag(examples)
     build-depends:
       pipewire,
+      rio,
       text,
       vector,
   else
@@ -126,6 +128,10 @@ executable hs-pw-mon
 executable hs-pw-link
   import: examples
   main-is: PwLink.hs
+
+executable hs-pw-metadata
+  import: examples
+  main-is: PwMetadata.hs
 
 executable video-src
   import: examples

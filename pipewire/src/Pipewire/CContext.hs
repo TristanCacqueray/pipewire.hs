@@ -31,6 +31,9 @@ data PwBufferStruct
 
 data SpaSourceStruct
 
+-- Extensions
+data PwMetadataEventsStruct
+
 -- SPA
 data SpaHookStruct
 data SpaDictStruct
@@ -60,6 +63,7 @@ pwContext =
                 , (Struct "pw_link_events", [t|PwLinkEventsStruct|])
                 , (Struct "pw_node_info", [t|PwNodeInfoStruct|])
                 , (Struct "pw_node_events", [t|PwNodeEventsStruct|])
+                , (Struct "pw_metadata_events", [t|PwMetadataEventsStruct|])
                 , (Struct "pw_proxy_events", [t|PwProxyEventsStruct|])
                 , (Struct "pw_proxy", [t|PwProxyStruct|])
                 , (Struct "pw_stream", [t|PwStreamStruct|])

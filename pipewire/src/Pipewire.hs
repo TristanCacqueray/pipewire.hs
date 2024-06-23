@@ -61,6 +61,10 @@ module Pipewire (
     -- ** Properties
     module Pipewire.Utilities.Properties,
 
+    -- * Extensions
+    module Pipewire.Extensions.Metadata,
+    withMetadata,
+
     -- * SPA
 
     -- ** Utilities
@@ -100,6 +104,7 @@ import Pipewire.CoreAPI.Proxy (PwProxy, pw_proxy_add_object_listener, pw_proxy_d
 import Pipewire.CoreAPI.Registry (GlobalHandler, GlobalRemoveHandler, pw_registry_add_listener, pw_registry_destroy, withRegistryEvents)
 import Pipewire.CoreAPI.ThreadLoop (ThreadLoop, pw_thread_loop_destroy, pw_thread_loop_get_loop, pw_thread_loop_new, pw_thread_loop_signal, pw_thread_loop_start, pw_thread_loop_stop, pw_thread_loop_wait, withLock, withThreadSignalsHandler, withUnlock)
 import Pipewire.Enum
+import Pipewire.Extensions.Metadata
 import Pipewire.Prelude
 import Pipewire.Protocol (PwID (..), PwVersion (..), SeqID (..))
 import Pipewire.SPA.Utilities.Dictionary (SpaDict, spaDictLookup, spaDictLookupInt, spaDictRead, spaDictSize, withSpaDict)
@@ -343,3 +348,6 @@ waitForLinkAsync pwLink threadLoop = do
             withLinkEvents infoHandler \ple -> do
                 pw_proxy_add_object_listener pwLink.getProxy spaHook (pwLinkEventsFuncs ple)
                 withUnlock threadLoop $ takeMVar baton
+
+withMetadata :: Registry -> PwID -> (Metadata -> IO a) -> IO a
+withMetadata registry pwid = bracket (bindMetadata registry pwid) (\m -> pw_proxy_destroy m.getProxy)

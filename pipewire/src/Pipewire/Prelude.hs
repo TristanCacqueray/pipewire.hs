@@ -1,6 +1,7 @@
 -- | Helper functions and re-export
 module Pipewire.Prelude (
     peekCString,
+    maybePeekCString,
     dieOnNull,
     dieOnErr,
     maybeOnNull,
@@ -44,6 +45,11 @@ peekCString :: CString -> IO Text
 peekCString cs = do
     bs <- unsafePackCString cs
     return $! decodeUtf8 bs
+
+maybePeekCString :: CString -> IO (Maybe Text)
+maybePeekCString cs
+    | cs == nullPtr = pure Nothing
+    | otherwise = Just <$> peekCString cs
 
 dieOnErr :: String -> IO CInt -> IO ()
 dieOnErr src act = do
