@@ -1,0 +1,7 @@
+Left "test/config/empty.conf:2:1:
+    |
+  2 | <empty line>
+    | ^
+  unexpected end of input
+  expecting "connect", "disconnect", or "when"
+  "

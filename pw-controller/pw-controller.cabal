@@ -47,15 +47,17 @@ library
   hs-source-dirs: src
   -- cabal-gild: discover src
   exposed-modules:
-    PwConstraint
-    PwMonParser
-    PwState
+    PwController.Eval
+    PwController.Expr
+    PwController.Matcher
+    PwController.NodePorts
+    PwController.Parser
+
   build-depends:
-    attoparsec,
-    bytestring,
     containers,
-    pcre-light,
-    rio,
+    megaparsec,
+    pipewire,
+    regex-tdfa,
     text,
 
 executable pw-controller
@@ -63,11 +65,22 @@ executable pw-controller
   hs-source-dirs: app
   main-is: PwController.hs
   build-depends:
-    bytestring,
     optparse-applicative,
+    pipewire,
     pw-controller,
     rio,
-    streaming-attoparsec,
-    streaming-bytestring,
     text,
-    typed-process,
+
+test-suite test-pw-controller
+  import: common
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Spec.hs
+  build-depends:
+    pipewire,
+    pretty-simple <5,
+    pw-controller,
+    tasty <1.5,
+    tasty-golden <2.4,
+    tasty-hunit <2,
+    text,
