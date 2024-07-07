@@ -39,6 +39,12 @@ module Pipewire (
     -- ** Core
     module Pipewire.CoreAPI.Core,
 
+    -- ** Client
+    module Pipewire.CoreAPI.Client,
+
+    -- ** Device
+    module Pipewire.CoreAPI.Device,
+
     -- ** Link
     module Pipewire.CoreAPI.Link,
     waitForLink,
@@ -92,8 +98,10 @@ import Control.Concurrent (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
+import Pipewire.CoreAPI.Client
 import Pipewire.CoreAPI.Context (Context, pw_context_connect, pw_context_destroy, pw_context_new)
 import Pipewire.CoreAPI.Core (Core, CoreEvents, CoreInfo, DoneHandler, ErrorHandler, InfoHandler, Registry, pw_core_add_listener, pw_core_disconnect, pw_core_get_registry, pw_core_sync, pw_id_core, withCoreEvents)
+import Pipewire.CoreAPI.Device
 import Pipewire.CoreAPI.Initialization (pw_deinit, pw_init)
 import Pipewire.CoreAPI.Link (Link (..), LinkProperties (..), pwLinkEventsFuncs, pw_link_create, setupLinkProperties, withLink, withLinkEvents)
 import Pipewire.CoreAPI.Loop (Loop)
@@ -273,23 +281,36 @@ withRegistryHandler pwInstance registryHandler go =
     -- Setup registry handlers
     withSpaHook \registryListener -> do
         withNodeEvents \nodeEvents -> withNodeInfoHandler nodeInfoHandler nodeEvents do
-            withRegistryEvents (handler nodeEvents) removeHandler \registryEvent -> do
-                pw_registry_add_listener pwInstance.registry registryListener registryEvent
-                case pwInstance.instanceLoop of
-                    AsyncLoop threadLoop -> withUnlock threadLoop go
-                    _ -> go
+            withDeviceEvents \deviceEvents -> withDeviceInfoHandler deviceInfoHandler deviceEvents do
+                withRegistryEvents (handler nodeEvents deviceEvents) removeHandler \registryEvent -> do
+                    pw_registry_add_listener pwInstance.registry registryListener registryEvent
+                    case pwInstance.instanceLoop of
+                        AsyncLoop threadLoop -> withUnlock threadLoop go
+                        _ -> go
   where
     removeHandler pwid = registryHandler $ Removed pwid
     nodeInfoHandler pwid props = do
         spaDictSize props >>= \case
             0 -> pure ()
             _ -> registryHandler $ Added True pwid "PipeWire:Interface:Node" props
-    handler nodeEvents pwid name _ props = do
+    deviceInfoHandler pwid props = do
+        spaDictSize props >>= \case
+            0 -> pure ()
+            _ -> registryHandler $ Added True pwid "PipeWire:Interface:Device" props
+    handler nodeEvents deviceEvents pwid name _ props = do
         case name of
             "PipeWire:Interface:Node" -> do
                 node <- PwNode.bindNode pwInstance.registry pwid
                 -- Keep track of node params to get media change
                 PwNode.addNodeListener node nodeEvents
+                modifyMVar_ pwInstance.sync \case
+                    -- syncState is not running
+                    Nothing -> pure Nothing
+                    -- update the pending sync to wait for node events to be processed
+                    sync -> Just <$> pw_core_sync pwInstance.core pw_id_core sync
+            "PipeWire:Interface:Device" -> do
+                dev <- bindDevice pwInstance.registry pwid
+                addDeviceListener dev deviceEvents
                 modifyMVar_ pwInstance.sync \case
                     -- syncState is not running
                     Nothing -> pure Nothing

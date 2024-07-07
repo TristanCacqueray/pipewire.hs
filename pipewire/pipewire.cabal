@@ -47,6 +47,7 @@ library
     Pipewire.CoreAPI.Client
     Pipewire.CoreAPI.Context
     Pipewire.CoreAPI.Core
+    Pipewire.CoreAPI.Device
     Pipewire.CoreAPI.Initialization
     Pipewire.CoreAPI.Link
     Pipewire.CoreAPI.Loop

@@ -3,7 +3,6 @@ module Main (main) where
 
 import Data.IORef
 import Pipewire qualified as PW
-import Pipewire.CoreAPI.Client qualified as PW
 
 main :: IO ()
 main = PW.withPipewire $ PW.withMainLoop $ \mainLoop -> do

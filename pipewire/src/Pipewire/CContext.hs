@@ -25,6 +25,9 @@ data PwLinkInfoStruct
 data PwClientEventsStruct
 data PwClientInfoStruct
 
+data PwDeviceEventsStruct
+data PwDeviceInfoStruct
+
 data PwNodeEventsStruct
 data PwNodeInfoStruct
 
@@ -66,6 +69,8 @@ pwContext =
                 , (Struct "pw_link_events", [t|PwLinkEventsStruct|])
                 , (Struct "pw_client_info", [t|PwClientInfoStruct|])
                 , (Struct "pw_client_events", [t|PwClientEventsStruct|])
+                , (Struct "pw_device_info", [t|PwDeviceInfoStruct|])
+                , (Struct "pw_device_events", [t|PwDeviceEventsStruct|])
                 , (Struct "pw_node_info", [t|PwNodeInfoStruct|])
                 , (Struct "pw_node_events", [t|PwNodeEventsStruct|])
                 , (Struct "pw_metadata_events", [t|PwMetadataEventsStruct|])
