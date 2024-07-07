@@ -44,6 +44,7 @@ library
   exposed-modules:
     Pipewire
     Pipewire.CContext
+    Pipewire.CoreAPI.Client
     Pipewire.CoreAPI.Context
     Pipewire.CoreAPI.Core
     Pipewire.CoreAPI.Initialization
@@ -120,6 +121,10 @@ executable tutorial3
 executable tutorial4
   import: examples
   main-is: Tutorial4.hs
+
+executable tutorial6
+  import: examples
+  main-is: Tutorial6.hs
 
 executable hs-pw-mon
   import: examples

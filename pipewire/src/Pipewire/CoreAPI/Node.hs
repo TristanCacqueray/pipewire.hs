@@ -15,7 +15,7 @@ C.include "<pipewire/pipewire.h>"
 -- | A Link proxy
 newtype Node = Node {getProxy :: PwProxy}
 
--- Q: does this needs to be freed?k
+-- Q: does this needs to be freed?
 --
 -- Note: a couple of spa_hook are requested for the user data,
 -- they are used to setup the node listener and the proxy events

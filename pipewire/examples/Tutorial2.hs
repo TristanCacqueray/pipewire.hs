@@ -19,7 +19,7 @@ main =
         PW.withSpaHook \registryListener -> do
             PW.withRegistryEvents handler removeHandler \registryEvent -> do
                 PW.pw_registry_add_listener registry registryListener registryEvent
-                print =<< PW.pw_main_loop_run mainLoop
+                PW.pw_main_loop_run mainLoop
                 putStrLn "Done!"
 
     removeHandler pwid = do
