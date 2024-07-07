@@ -117,7 +117,7 @@ withAutoConnect cb = PW.withProperties \props -> do
             updateState pwInstance ev = modifyMVar_ pwInstance.stateVar \state -> do
                 reg <- PW.updateRegistryState ev state
                 case ev of
-                    PW.Added _ "PipeWire:Interface:Port" _ -> do
+                    PW.Added _ _ "PipeWire:Interface:Port" _ -> do
                         readIORef nodeIDRef >>= \case
                             Just nodeID -> connectSink reg pwInstance nodeID
                             -- We don't know the node-id yet

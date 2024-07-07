@@ -9,11 +9,10 @@ main = PW.withInstance () \_ pwInstance -> do
   where
     printEvent ev = do
         case ev of
-            PW.ChangedNode pwid props -> do
-                putStrLn $ "changed: " <> show pwid
-                printProps props
-            PW.Added pwid name props -> do
-                putStrLn $ "added: " <> show pwid
+            PW.Added changed pwid name props -> do
+                case changed of
+                    False -> putStrLn $ "added: " <> show pwid
+                    True -> putStrLn $ "changed: " <> show pwid
                 putStrLn $ " type: " <> show name
                 printProps props
             PW.Removed pwid -> do

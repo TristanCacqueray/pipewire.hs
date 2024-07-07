@@ -107,7 +107,7 @@ newtype Device = Device {name :: Text} deriving (Show)
 -- | Update the 'RegistryState' on registry event.
 updateRegistryState :: PW.RegistryEvent -> RegistryState -> IO RegistryState
 updateRegistryState ev reg = case ev of
-    PW.Added pwid "PipeWire:Interface:Port" dict -> do
+    PW.Added _ pwid "PipeWire:Interface:Port" dict -> do
         newPort <-
             (,,,)
                 <$> PW.spaDictLookup dict "port.alias"
@@ -124,18 +124,17 @@ updateRegistryState ev reg = case ev of
             (Just name, Just node, Just "in", Just kind) -> pure $ reg{inputs = insert name node kind reg.inputs}
             (Just name, Just node, Just "out", Just kind) -> pure $ reg{outputs = insert name node kind reg.outputs}
             _ -> putStrLn ("Unknown port: " <> show newPort) >> pure reg
-    PW.Added pwid "PipeWire:Interface:Link" dict -> do
+    PW.Added _ pwid "PipeWire:Interface:Link" dict -> do
         newLink <- (,) <$> PW.spaDictLookupInt dict "link.output.port" <*> PW.spaDictLookupInt dict "link.input.port"
         case newLink of
             (Just out, Just inp) -> pure $ reg{links = IDMap.insert pwid (PW.PwID out, PW.PwID inp) reg.links}
             _ -> putStrLn ("Unknown link: " <> show newLink) >> pure reg
-    PW.Added pwid "PipeWire:Interface:Node" dict -> handleNode pwid dict
-    PW.Added pwid "PipeWire:Interface:Device" dict -> do
+    PW.Added _ pwid "PipeWire:Interface:Node" dict -> handleNode pwid dict
+    PW.Added _ pwid "PipeWire:Interface:Device" dict -> do
         PW.spaDictLookup dict "device.nick" >>= \case
             Just name -> pure $ reg{devices = IDMap.insert pwid (Device name) reg.devices}
             Nothing -> putStrLn "Unknown device" >> pure reg
     PW.Added{} -> pure reg
-    PW.ChangedNode pwid props -> handleNode pwid props
     PW.Removed pwid ->
         pure $
             RegistryState

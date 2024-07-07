@@ -169,7 +169,7 @@ data CoreError = CoreError
     deriving (Show)
 
 -- | A registry event
-data RegistryEvent = Added PwID Text SpaDict | Removed PwID | ChangedNode PwID SpaDict
+data RegistryEvent = Added Bool PwID Text SpaDict | Removed PwID
 
 -- TODO: handle pw_main_loop error
 
@@ -283,7 +283,7 @@ withRegistryHandler pwInstance registryHandler go =
     nodeInfoHandler pwid props = do
         spaDictSize props >>= \case
             0 -> pure ()
-            _ -> registryHandler $ ChangedNode pwid props
+            _ -> registryHandler $ Added True pwid "PipeWire:Interface:Node" props
     handler nodeEvents pwid name _ props = do
         case name of
             "PipeWire:Interface:Node" -> do
@@ -296,7 +296,7 @@ withRegistryHandler pwInstance registryHandler go =
                     -- update the pending sync to wait for node events to be processed
                     sync -> Just <$> pw_core_sync pwInstance.core pw_id_core sync
             _ -> pure ()
-        registryHandler $ Added pwid name props
+        registryHandler $ Added False pwid name props
 
 -- | Wait for link with a paused 'MainLoop'.
 waitForLink :: Link -> PwInstance state -> IO (Maybe (NonEmpty CoreError))

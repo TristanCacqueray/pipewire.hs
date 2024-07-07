@@ -60,7 +60,7 @@ withMetadatas cb = do
   where
     handleEvent stateV ev = do
         case ev of
-            PW.Added pwid "PipeWire:Interface:Metadata" props -> do
+            PW.Added _ pwid "PipeWire:Interface:Metadata" props -> do
                 PW.spaDictLookup props "metadata.name" >>= \case
                     Nothing -> putStrLn $ show pwid <> ": metadata with name?!"
                     Just name -> modifyMVar_ stateV (\xs -> pure (Metadata pwid name : xs))
