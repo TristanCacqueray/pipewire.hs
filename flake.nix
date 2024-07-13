@@ -29,6 +29,14 @@
         pkgs.pkg-config
       ];
     in {
+
+      # An output that allows a user of this flake to extend their
+      # chosen haskell packages set with pipewire and pw-controller.
+      haskellExtend = {pipewire}: hpFinal: hpPrev: {
+        pw-controller = hpPrev.callCabal2nix "pw-controller" ./pw-controller { };
+        pipewire = hpPrev.callCabal2nix "pipewire" ./pipewire { libpipewire = pipewire; };
+      };
+
       devShell.x86_64-linux = hsPkgs.shellFor {
         packages = p: [ p.pw-controller p.pipewire ];
         buildInputs = ciTools ++ devTools;
