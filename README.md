@@ -26,6 +26,26 @@ References:
 - Source entrypoint: [Pipewire.hs](./pipewire/src/Pipewire.hs)
 - Upstream doc: <https://docs.pipewire.org/topics.html>
 
+## Nix
+To use this library in your own Haskell projects that are built with [Nix](https://nixos.org/), this flake provides an output `haskellExtend`, which can be used to extend a collection of Haskell packages in nixpkgs. An example flake structure using this is shown below.
+
+```nix
+# flake.nix
+{
+    inputs = {
+       ...
+       pipewire-hs.url = "github:TristanCacqueray/pipewire.hs;
+       ...
+    };
+
+    outputs = { self, nixpkgs, pipewire-hs, ...}: {
+       ...
+       haskellPackages = pkgs.haskellPackages.extend (pipewire-hs.haskellExtend { pipewire = pkgs.pipewire; });
+       ...
+    };
+}
+
+```
 
 ## Contribute
 
