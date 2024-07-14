@@ -13,6 +13,7 @@
       # The haskell package set override
       haskellExtend = hpFinal: hpPrev: {
         pw-controller = hpPrev.callCabal2nix "pw-controller" ./pw-controller { };
+        pw-player = hpPrev.callCabal2nix "pw-player" ./pw-player { };
         pipewire = hpPrev.callCabal2nixWithOptions "pipewire" ./pipewire
           "--flag=examples" { libpipewire = pkgs.pipewire; };
       };

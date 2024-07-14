@@ -1,3 +1,4 @@
-packages: ./pw-controller/ ./pipewire/
+packages: ./pw-controller/ ./pipewire/ ./pw-player/
 package pipewire
   flags: +examples
+tests: True

@@ -1,0 +1,76 @@
+cabal-version: 3.0
+name: pw-player
+version: 0.1
+synopsis: Audio stem player.
+description:
+  Use pw-player to play sound with pipewire.
+
+category: Sound
+author: Tristan de Cacqueray
+maintainer: tristan.cacqueray@gmail.com
+license: GPL-3.0-only
+license-file: LICENSE
+build-type: Simple
+extra-doc-files: CHANGELOG.md
+
+common executable
+  ghc-options:
+    -threaded
+    -rtsopts
+    -with-rtsopts=-T
+
+common common
+  build-depends: base <5
+  default-language: GHC2021
+  ghc-options:
+    -Wall
+    -fwarn-incomplete-uni-patterns
+    -Wno-partial-type-signatures
+    -fwrite-ide-info
+    -Wno-missing-methods
+
+  default-extensions:
+    BlockArguments
+    DerivingStrategies
+    DuplicateRecordFields
+    ImportQualifiedPost
+    LambdaCase
+    OverloadedRecordDot
+    OverloadedStrings
+    PartialTypeSignatures
+    QuasiQuotes
+    StrictData
+    ViewPatterns
+
+library
+  import: common
+  hs-source-dirs: src
+  -- cabal-gild: discover src
+  exposed-modules:
+    PwPlayer.Sound
+    PwPlayer.Stereo
+
+  build-depends:
+    containers,
+    pipewire,
+    vector
+
+executable pw-player
+  import: common, executable
+  hs-source-dirs: app
+  main-is: PwPlayer.hs
+  build-depends:
+    optparse-applicative,
+    pipewire,
+    pw-player,
+    rio,
+
+test-suite test-pw-player
+  import: common
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Spec.hs
+  build-depends:
+    pw-player,
+    tasty <1.5,
+    tasty-hunit <2,
