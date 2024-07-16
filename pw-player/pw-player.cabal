@@ -63,6 +63,8 @@ executable pw-player
     optparse-applicative,
     pipewire,
     pw-player,
+    vector,
+    text,
     rio,
 
 test-suite test-pw-player
