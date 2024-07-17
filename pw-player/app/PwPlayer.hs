@@ -3,7 +3,9 @@ module Main (main) where
 
 import Control.Monad (forM_, when)
 import Control.Monad.ST (ST, runST)
+import Data.Fixed (mod')
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
+import Data.Int
 import Data.STRef (STRef, newSTRef, readSTRef, writeSTRef)
 import Data.Text (Text)
 import Data.Vector.Storable qualified as SV
@@ -15,6 +17,17 @@ import Pipewire.Stream qualified as PW
 newtype DemoState s = DemoState
     { pos :: STRef s Int
     }
+
+sr :: Int
+sr = 44100
+
+demoSound :: Int -> Int -> Int8
+demoSound pitch pos = fromIntegral ((pos `mod` period) * 255 `div` period)
+  where
+    period = 44100 `div` pitch
+
+demoSound' :: Int -> Int -> Float
+demoSound' pitch pos = (fromIntegral (pos * pitch * 2) / 44100) `mod'` 2 - 1
 
 -- | This module produces a sample for a given tick, see 'renderDemo'
 demoModule :: DemoState s -> ST s Float
@@ -29,10 +42,12 @@ demoModule state = do
     let pitch = getNote pos
 
     -- Render the sample
-    pure $ 0.5 * mkPitch pitch pos
+    pure $ 0.5 * (fromIntegral (demoSound pitch pos) / 127)
+
+-- pure $ 0.5 * demoSound' pitch pos
 
 -- | Return the pitch of the current pos (44100 is 1sec)
-getNote :: Int -> Float
+getNote :: Int -> Int
 getNote pos
     | pos > 20_000 = 500
     | pos > 12_000 = 480
@@ -91,7 +106,7 @@ data Player = Player
     }
 
 newPlayer :: IO Player
-newPlayer = Player (PW.Channels 1) (PW.Rate 44100) <$> newIORef []
+newPlayer = Player (PW.Channels 1) (PW.Rate sr) <$> newIORef []
 
 newStem :: Text -> SV.Vector Float -> IO Stem
 newStem name samples = Stem name samples <$> newIORef 0
